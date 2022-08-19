@@ -231,11 +231,13 @@ export function parseLabel(
       // Handle:                                      ^^^^^^^^^^^^^^^^
 
       let format = null;
+      let isHidden = false;
       for (const rule of markerSchema.data) {
         // The rule.value === undefined line is odd mainly because Flow was having trouble
         // refining the type.
         if (rule.value === undefined && rule.key === payloadKey) {
           format = rule.format;
+          isHidden = rule.isHidden === true;
           break;
         }
       }
@@ -247,8 +249,9 @@ export function parseLabel(
         }
 
         const value = marker.data[payloadKey];
-        if (value === undefined || value === null) {
+        if (value === undefined || value === null || isHidden) {
           // This would return "undefined" or "null" otherwise.
+          // and also handles the isHidden property
           return '';
         }
         return format
