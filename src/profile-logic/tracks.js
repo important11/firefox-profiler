@@ -347,6 +347,10 @@ export function computeLocalTracksByPid(
         (schema) => schema.trackConfig !== undefined
       )
     : [];
+  const markerNamesToIndex = {};
+  profile.meta.markerSchema.forEach(
+    (schema, index) => (markerNamesToIndex[schema.name] = index)
+  );
 
   for (
     let threadIndex = 0;
@@ -398,6 +402,7 @@ export function computeLocalTracksByPid(
             type: 'marker',
             threadIndex,
             markerSchema: marker,
+            markerIndex: markerNamesToIndex[marker.name],
           });
         }
       }

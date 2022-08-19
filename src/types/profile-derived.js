@@ -325,6 +325,7 @@ export type LocalTrack =
       +type: 'marker',
       +threadIndex: ThreadIndex,
       +markerSchema: MarkerSchema,
+      +markerIndex: MarkerIndex,
     |};
 
 export type Track = GlobalTrack | LocalTrack;
