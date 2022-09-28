@@ -568,24 +568,79 @@ export function getCallTree(
   });
 }
 
+type _SummaryPerFunction = {|
+  callNodeSelf: Float32Array, // Milliseconds[]
+  callNodeTotal: Float32Array, // Milliseconds[]
+|};
+
+function _combineSummaryPerFunctions(
+  summaryPerFunctions: _SummaryPerFunction[]
+): _SummaryPerFunction {
+  ensureExists(summaryPerFunctions[0]);
+  if (summaryPerFunctions.length === 1) {
+    return summaryPerFunctions[0];
+  }
+  const callNodeSelf = new Float32Array(summaryPerFunctions[0].callNodeSelf);
+  const callNodeTotal = new Float32Array(summaryPerFunctions[0].callNodeTotal);
+  for (let i = 1; i < summaryPerFunctions.length; i++) {
+    const { callNodeSelf: self, callNodeTotal: total } = summaryPerFunctions[i];
+    for (let j = 0; j < self.length; j++) {
+      callNodeSelf[j] += self[j];
+      callNodeTotal[j] += total[j];
+    }
+  }
+  return { callNodeSelf, callNodeTotal };
+}
+
+function _subtractSummaryPerFunctions(
+  initial: _SummaryPerFunction,
+  subtracted: _SummaryPerFunction
+) {
+  const callNodeSelf = new Float32Array(initial.callNodeSelf);
+  const callNodeTotal = new Float32Array(initial.callNodeTotal);
+  for (let j = 0; j < callNodeSelf.length; j++) {
+    callNodeSelf[j] -= subtracted.callNodeSelf[j];
+    callNodeTotal[j] -= subtracted.callNodeTotal[j];
+  }
+  return { callNodeSelf, callNodeTotal };
+}
+
+/** ensures that the slices are not to large for any reasonably sized sample */
+const MAX_SAMPLE_SLICE_NUMBER = 100;
+/** ensures that the slices are not to large for any reasonably sized sample */
+const MAX_SAMPLE_SLICE_LEVEL2_NUMBER = 10;
+const MIN_SAMPLE_SLICE_SIZE = 400;
+
+function _sliceNumber(sampleCount: number): number {
+  if (sampleCount < MIN_SAMPLE_SLICE_SIZE) {
+    return 1;
+  }
+  const sliceNumber = Math.min(sampleCount / MIN_SAMPLE_SLICE_SIZE, MAX_SAMPLE_SLICE_NUMBER);
+  return Math.max(1, Math.floor(sliceNumber));
+}
+
+function _sliceLength(sampleCount: number): number {
+  return Math.ceil(sampleCount / _sliceNumber(sampleCount));
+}
+
 /**
  * Return the self and total per call node index
  *
  * It's not as simple as expected because their might be recursion happening and we do not want to count the same function multiple times for a time slot.
  */
-function _getSummaryPerFunction(
+function _getSummaryPerFunctionSlice(
   thread: Thread,
   samples: SamplesLikeTable,
-  funcToCallNodeIndex: Int32Array
-): {
-  callNodeSelf: Float32Array, // Milliseconds[]
-  callNodeTotal: Float32Array, // Milliseconds[]
-} {
+  funcToCallNodeIndex: Int32Array,
+  startIndex: number,
+  endIndex: number
+): _SummaryPerFunction {
+  console.log('Recompute summary for ', {diff: startIndex - endIndex, startIndex, endIndex});
   const { frameTable, stackTable } = thread;
   const callNodeSelf = new Float32Array(funcToCallNodeIndex.length); // intialized to 0
   const callNodeTotal = new Float32Array(funcToCallNodeIndex.length);
 
-  for (let sampleIndex = 0; sampleIndex < samples.stack.length; sampleIndex++) {
+  for (let sampleIndex = startIndex; sampleIndex < endIndex; sampleIndex++) {
     const stackIndex = samples.stack[sampleIndex];
     const weight = samples.weight ? samples.weight[sampleIndex] : 1;
     let stackStart: IndexIntoStackTable | null = stackIndex;
@@ -605,8 +660,203 @@ function _getSummaryPerFunction(
   return { callNodeSelf, callNodeTotal };
 }
 
+/** memoizes slices of summary per function per thread */
+function _memoizeSummaryPerFunctionSlice() {
+  let lastThread: Thread | null = null;
+  let lastSamples: SamplesLikeTable | null = null;
+  let cache: {
+    startIndex: number,
+    endIndex: number,
+    sum: _SummaryPerFunction,
+  }[] = [];
+  return function (
+    thread: Thread,
+    samples: SamplesLikeTable,
+    funcToCallNodeIndex: Int32Array,
+    startIndex: number,
+    endIndex: number
+  ): _SummaryPerFunction {
+    if (thread !== lastThread || samples !== lastSamples) {
+      lastThread = thread;
+      lastSamples = samples;
+      cache = [];
+    }
+    let found = cache.find(
+      ({ startIndex: start, endIndex: end }) =>
+        start === startIndex && end === endIndex
+    );
+    if (!found) {
+      found = {
+        startIndex,
+        endIndex,
+        sum: _getSummaryPerFunctionSlice(
+          thread,
+          samples,
+          funcToCallNodeIndex,
+          startIndex,
+          endIndex
+        ),
+      };
+      cache.push(found);
+    }
+    return found.sum;
+  };
+}
+
+const _getSummaryPerFunctionSliceMemoized = _memoizeSummaryPerFunctionSlice();
+
+/** calculates the summaries using cached slices and only computing the summaries for the partial slices at the start and the end directly */
+function _getSummaryPerFunction(
+  thread: Thread,
+  samples: SamplesLikeTable,
+  funcToCallNodeIndex: Int32Array,
+  startIndex: number,
+  endIndex: number
+): _SummaryPerFunction {
+  const sliceSize = _sliceLength(samples.length);
+  if (endIndex - startIndex < sliceSize) {
+    // we cannot use any cached slices properly
+    return _getSummaryPerFunctionSlice(
+      thread,
+      samples,
+      funcToCallNodeIndex,
+      startIndex,
+      endIndex
+    );
+  }
+  const slices: _SummaryPerFunction[] = [];
+  // we first compute the inner slices which can be cached properly
+  const innerStartIndex = Math.ceil(startIndex / sliceSize) * sliceSize;
+  const innerEndIndex = Math.floor(endIndex / sliceSize) * sliceSize;
+  for (let i = innerStartIndex; i < innerEndIndex; i += sliceSize) {
+    slices.push(
+      _getSummaryPerFunctionSliceMemoized(
+        thread,
+        samples,
+        funcToCallNodeIndex,
+        i,
+        Math.min(i + sliceSize, samples.length)
+      )
+    );
+  }
+  // then we compute the first and last slice which might be partial
+
+  const partialSlizeComputation = (start, end) => {
+    if (start >= end) {
+      return null;
+    }
+    return _getSummaryPerFunctionSlice(
+      thread,
+      samples,
+      funcToCallNodeIndex,
+      start,
+      end
+    );
+  };
+
+  if (innerStartIndex > innerEndIndex) { // there is only one end
+    // $FlowExpectError
+    slices.push(partialSlizeComputation(startIndex, endIndex));
+  } else {
+    const startSlice = partialSlizeComputation(startIndex, innerStartIndex);
+    const endSlice = partialSlizeComputation(innerEndIndex, endIndex);
+    if (startSlice) {
+      slices.push(startSlice);
+    }
+    if (endSlice) {
+      slices.push(endSlice);
+    }
+  }
+  if (slices.length === 0) {
+    return {
+      callNodeSelf: new Float32Array(funcToCallNodeIndex.length),
+      callNodeTotal: new Float32Array(funcToCallNodeIndex.length),
+    };
+  }
+  return _combineSummaryPerFunctions(slices);
+}
+
+/** Idea: only compute the difference to the prior selection */
+function _memoizeGetSummaryPerFunction() {
+  let lastThread: Thread | null = null;
+  let lastSamples: SamplesLikeTable | null = null;
+  let lastStartIndex: number | null = null;
+  let lastEndIndex: number | null = null;
+  let lastResult: _SummaryPerFunction | null = null;
+  return function (
+    thread: Thread,
+    samples: SamplesLikeTable,
+    funcToCallNodeIndex: Int32Array,
+    startIndex: number,
+    endIndex: number
+  ): _SummaryPerFunction {
+    if (startIndex === endIndex) {
+      return {
+        callNodeSelf: new Float32Array(funcToCallNodeIndex.length),
+        callNodeTotal: new Float32Array(funcToCallNodeIndex.length),
+      };
+    }
+    if (
+      thread !== lastThread ||
+      samples !== lastSamples ||
+      lastResult === null ||
+      lastStartIndex === null ||
+      lastEndIndex === null
+    ) {
+      // we start from scratch
+      lastThread = thread;
+      lastSamples = samples;
+      lastStartIndex = startIndex;
+      lastEndIndex = endIndex;
+      lastResult = _getSummaryPerFunction(
+        thread,
+        samples,
+        funcToCallNodeIndex,
+        startIndex,
+        endIndex
+      );
+      return lastResult;
+    }
+
+    // we only need to compute the difference, subtract from lastResult if start > end
+    const applySlice = (start: number, end: number) => {
+      if (start === end) {
+        return;
+      }
+      const sum = _getSummaryPerFunction(
+        thread,
+        samples,
+        funcToCallNodeIndex,
+        Math.min(start, end),
+        Math.max(start, end)
+      );
+      if (start < end) {
+        // we added a slice
+        // $FlowExpectError
+        lastResult = _combineSummaryPerFunctions([lastResult, sum]);
+      } else {
+        // we removed a slice
+        // $FlowExpectError
+        lastResult = _subtractSummaryPerFunctions(lastResult, sum);
+      }
+    };
+
+    applySlice(startIndex, lastStartIndex);
+    applySlice(lastEndIndex, endIndex);
+    lastStartIndex = startIndex;
+    lastEndIndex = endIndex;
+    // $FlowExpectError
+    return lastResult;
+  };
+}
+
+const _getSummaryPerFunctionMemoized = _memoizeGetSummaryPerFunction();
+
 /**
  * This computes all of the count and timing information displayed in the method table view.
+ *
+ * It does only use the stackTable and the frameTable from the thread, and not the samples table.
+ * The samples should include all samples of the whole range of the thread.
  *
  * Note: The "timionmgs" could have a number of different meanings based on the
  * what type of weight is in the SamplesLikeTable. For instance, it could be
@@ -618,29 +868,29 @@ export function computeFunctionTableCallTreeCountsAndSummary(
   {
     callNodeInfo: { callNodeTable, stackIndexToCallNodeIndex },
     funcToCallNodeIndex,
-  }: CallNodeInfoWithFuncMapping
+  }: CallNodeInfoWithFuncMapping,
+  startIndex: number,
+  endIndex: number
 ): CallTreeCountsAndSummary {
-  const { callNodeSelf, callNodeTotal } = _getSummaryPerFunction(
+  console.log("Recompute function table call tree counts and summary", {startIndex, endIndex});
+  const { callNodeSelf, callNodeTotal } = _getSummaryPerFunctionMemoized(
     thread,
     samples,
-    funcToCallNodeIndex
-  );
-  console.log({
-    callNodeTable,
-    stackIndexToCallNodeIndex,
     funcToCallNodeIndex,
-  });
+    startIndex,
+    endIndex
+  );
   funcToCallNodeIndex.forEach((callNodeIndex, funcIndex) => {
     if (callNodeIndex === -1) {
       return;
     }
-    console.log(
+    /*console.log(
       `funcIndex: ${funcIndex}, callNodeIndex: ${callNodeIndex}, func: ${thread.stringTable.getString(
         thread.funcTable.name[funcIndex]
       )}, callNodeSelf: ${callNodeSelf[callNodeIndex]}, callNodeTotal: ${
         callNodeTotal[callNodeIndex]
       }`
-    );
+    );*/
   });
 
   // one call node for each function

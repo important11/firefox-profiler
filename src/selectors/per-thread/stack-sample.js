@@ -298,10 +298,30 @@ export function getStackAndSampleSelectorsPerThread(
 
   const getFunctionTableCallTreeCountsAndSummary: Selector<CallTree.CallTreeCountsAndSummary> =
     createSelector(
-      threadSelectors.getPreviewFilteredThread,
-      threadSelectors.getPreviewFilteredSamplesForCallTree,
+      //threadSelectors.getPreviewFilteredThread,
+      threadSelectors.getFilteredThread,
+      ProfileSelectors.getPreviewSelection,
+      threadSelectors.getFilteredSamplesForCallTree,
       getFunctionTableCallNodeInfo,
-      CallTree.computeFunctionTableCallTreeCountsAndSummary
+      (thread, previewSelection, samples, info) => {
+        let selectionStart = 0;
+        let selectionEnd = samples.length;
+        if (previewSelection.hasSelection) {
+          [selectionStart, selectionEnd] =
+            ProfileData.getSampleIndexRangeForSelection(
+              samples,
+              previewSelection.selectionStart,
+              previewSelection.selectionEnd
+            );
+        }
+        return CallTree.computeFunctionTableCallTreeCountsAndSummary(
+          thread,
+          samples,
+          info,
+          selectionStart,
+          selectionEnd
+        );
+      }
     );
 
   /** returns a flat call tree used for the FunctionTable view */
