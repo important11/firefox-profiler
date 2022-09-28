@@ -226,6 +226,7 @@ export function getCallNodeInfo(
 export type CallNodeInfoWithFuncMapping = {|
   callNodeInfo: CallNodeInfo,
   funcToCallNodeIndex: Int32Array,
+  callNodeToFuncIndex: Int32Array,
 |};
 
 /**
@@ -247,6 +248,7 @@ export function getFunctionTableCallNodeInfo(
 ): CallNodeInfoWithFuncMapping {
   return timeCode('getFunctionTableCallNodeInfo', () => {
     const funcToCallNodeIndex = new Int32Array(funcTable.length).fill(-1);
+    const callNodeToFuncIndex = [];
     const stackIndexToCallNodeIndex = new Uint32Array(stackTable.length);
 
     // The callNodeTable components, per function index
@@ -269,6 +271,7 @@ export function getFunctionTableCallNodeInfo(
       if (funcToCallNodeIndex[funcIndex] === -1) {
         // we found a new function
         funcToCallNodeIndex[funcIndex] = length;
+        callNodeToFuncIndex.push(funcIndex);
         length++;
       }
       const callNodeIndex = funcToCallNodeIndex[funcIndex]; // index into the other tables
@@ -335,6 +338,7 @@ export function getFunctionTableCallNodeInfo(
     return {
       callNodeInfo: { callNodeTable, stackIndexToCallNodeIndex },
       funcToCallNodeIndex,
+      callNodeToFuncIndex: Int32Array.from(callNodeToFuncIndex),
     };
   });
 }
@@ -482,29 +486,31 @@ export function getSamplesSelectedStates(
  *
  * For samples that are neither 'FILTERED_OUT_*' nor 'SELECTED', this function compares
  * the sample's call node to the selected call node, in tree order. It uses the same
- * ordering as the function compareCallNodes in getTreeOrderComparator. But it does not
- * call compareCallNodes with the selected node for each sample's call node, because doing
- * so would recompute information about the selected call node on every call. Instead, it
- * has an equivalent implementation that is faster because it only computes information
- * about the selected call node's ancestors once.
+ * ordering as the function compareCallNodes in getTreeOrderComparator.
  */
 export function getSamplesSelectedStatesForFunction(
-  callNodeTable: CallNodeTable,
+  { callNodeToFuncIndex }: CallNodeInfoWithFuncMapping,
   sampleCallNodes: Array<IndexIntoCallNodeTable | null>,
   activeTabFilteredCallNodes: Array<IndexIntoCallNodeTable | null>,
-  selectedCallNodeIndex: IndexIntoCallNodeTable | null
+  selectedCallNodeIndex: IndexIntoCallNodeTable | null,
+  { stackTable, frameTable, samples }: Thread
 ): SelectedState[] {
   const result = new Array(sampleCallNodes.length);
+
+  const selectedFuncIndex =
+    selectedCallNodeIndex !== null
+      ? callNodeToFuncIndex[selectedCallNodeIndex]
+      : -1;
 
   /**
    * Take a call node, and compute its selected state.
    */
   function getSelectedStateFromCallNode(
     callNode: IndexIntoCallNodeTable | null,
-    activeTabFilteredCallNode: IndexIntoCallNodeTable | null
+    activeTabFilteredCallNode: IndexIntoCallNodeTable | null,
+    sampleIndex: IndexIntoStackTable
   ): SelectedState {
-    let callNodeIndex = callNode;
-    if (callNodeIndex === null) {
+    if (callNode === null) {
       return activeTabFilteredCallNode === null
         ? // This sample was not part of the active tab.
           'FILTERED_OUT_BY_ACTIVE_TAB'
@@ -520,16 +526,18 @@ export function getSamplesSelectedStatesForFunction(
       return 'SELECTED';
     }
 
-    // Walk the call nodes toward the root, and search for the selected call node
-    while (callNodeIndex !== -1 && callNodeIndex !== selectedCallNodeIndex) {
-      callNodeIndex = callNodeTable.prefix[callNodeIndex];
-    }
+    let currentStackIndex = samples.stack[sampleIndex];
 
-    if (callNodeIndex === selectedCallNodeIndex) {
-      // This sample's call node at the depth matches the selected call node.
-      return 'SELECTED';
+    while (currentStackIndex !== null) {
+      const frameIndex = stackTable.frame[currentStackIndex];
+      if (frameIndex !== -1) {
+        const funcIndex = frameTable.func[frameIndex];
+        if (funcIndex === selectedFuncIndex) {
+          return 'SELECTED'; // found a match
+        }
+      }
+      currentStackIndex = stackTable.prefix[currentStackIndex];
     }
-
     return 'UNSELECTED_ORDERED_AFTER_SELECTED';
   }
 
@@ -541,7 +549,8 @@ export function getSamplesSelectedStatesForFunction(
   ) {
     result[sampleIndex] = getSelectedStateFromCallNode(
       sampleCallNodes[sampleIndex],
-      activeTabFilteredCallNodes[sampleIndex]
+      activeTabFilteredCallNodes[sampleIndex],
+      sampleIndex
     );
   }
   return result;

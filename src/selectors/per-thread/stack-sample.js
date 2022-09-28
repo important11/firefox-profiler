@@ -221,16 +221,20 @@ export function getStackAndSampleSelectorsPerThread(
           tabFilteredThread.samples.stack,
           stackIndexToCallNodeIndex
         );
-      return (
-        selectedCallNode !== null
-          ? ProfileData.getSamplesSelectedStates
-          : ProfileData.getSamplesSelectedStatesForFunction
-      )(
-        callNodeTable,
-        sampleIndexToCallNodeIndex,
-        activeTabFilteredCallNodeIndex,
-        selected
-      );
+      return selectedCallNode !== null
+        ? ProfileData.getSamplesSelectedStates(
+            callNodeTable,
+            sampleIndexToCallNodeIndex,
+            activeTabFilteredCallNodeIndex,
+            selected
+          )
+        : ProfileData.getSamplesSelectedStatesForFunction(
+            functionTableCallNodeInfo,
+            sampleIndexToCallNodeIndex,
+            activeTabFilteredCallNodeIndex,
+            selectedFunctionTableCallNodeIndex,
+            tabFilteredThread
+          );
     }
   );
 
