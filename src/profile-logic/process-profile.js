@@ -398,6 +398,9 @@ function _extractUnsymbolicatedFunction(
   funcTable.fileName[funcIndex] = null;
   funcTable.lineNumber[funcIndex] = null;
   funcTable.columnNumber[funcIndex] = null;
+  if (funcTable.sourceUrl) {
+    funcTable.sourceUrl[funcIndex] = null;
+  }
   return { funcIndex, frameAddress: addressRelativeToLib };
 }
 
@@ -461,6 +464,9 @@ function _extractCppFunction(
   funcTable.fileName[newFuncIndex] = null;
   funcTable.lineNumber[newFuncIndex] = null;
   funcTable.columnNumber[newFuncIndex] = null;
+  if (funcTable.sourceUrl) {
+    funcTable.sourceUrl[newFuncIndex] = null;
+  }
 
   return newFuncIndex;
 }
@@ -572,6 +578,9 @@ function _extractUnknownFunctionType(
   funcTable.fileName[index] = null;
   funcTable.lineNumber[index] = null;
   funcTable.columnNumber[index] = null;
+  if (funcTable.sourceUrl) {
+    funcTable.sourceUrl[index] = null;
+  }
   return index;
 }
 

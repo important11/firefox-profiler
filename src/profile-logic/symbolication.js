@@ -773,6 +773,9 @@ export function applySymbolicationStep(
           funcTable.fileName[funcIndex] = null;
           funcTable.lineNumber[funcIndex] = null;
           funcTable.columnNumber[funcIndex] = null;
+          if (funcTable.sourceUrl) {
+            funcTable.sourceUrl.push(null);
+          }
           // The name field will be filled below.
           funcTable.length++;
         }
