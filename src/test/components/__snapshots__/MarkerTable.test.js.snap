@@ -87,7 +87,7 @@ exports[`MarkerTable renders some basic markers and updates when needed 1`] = `
       class="treeViewHeader"
     >
       <span
-        class="treeViewHeaderColumn treeViewFixedColumn start sortInactive"
+        class="treeViewHeaderColumn treeViewFixedColumn start sortDescending"
         data-column="start"
       >
         Start
@@ -514,7 +514,7 @@ exports[`MarkerTable sorts when the start header and duration header is clicked 
         class="treeViewHeader"
       >
         <span
-          class="treeViewHeaderColumn treeViewFixedColumn start sortDescending"
+          class="treeViewHeaderColumn treeViewFixedColumn start sortAscending"
           data-column="start"
         >
           Start
@@ -942,7 +942,7 @@ exports[`MarkerTable sorts when the start header and duration header is clicked 
         class="treeViewHeader"
       >
         <span
-          class="treeViewHeaderColumn treeViewFixedColumn start sortAscending"
+          class="treeViewHeaderColumn treeViewFixedColumn start sortDescending"
           data-column="start"
         >
           Start
@@ -1422,19 +1422,21 @@ exports[`MarkerTable sorts when the start header and duration header is clicked 
                 >
                   <span
                     class="treeViewRowColumn treeViewFixedColumn start"
-                    title="0.158s"
+                    title="0.000s"
                   >
-                    0.158s
+                    0.000s
                   </span>
                   <span
                     class="treeViewRowColumn treeViewFixedColumn duration"
-                    title=""
-                  />
+                    title="0s"
+                  >
+                    0s
+                  </span>
                   <span
                     class="treeViewRowColumn treeViewFixedColumn type"
-                    title="Log"
+                    title="UserTiming"
                   >
-                    Log
+                    UserTiming
                   </span>
                 </div>
                 <div
@@ -1443,21 +1445,21 @@ exports[`MarkerTable sorts when the start header and duration header is clicked 
                 >
                   <span
                     class="treeViewRowColumn treeViewFixedColumn start"
-                    title="0.108s"
+                    title="0.153s"
                   >
-                    0.108s
+                    0.153s
                   </span>
                   <span
                     class="treeViewRowColumn treeViewFixedColumn duration"
-                    title="unknown"
+                    title="584.00ns"
                   >
-                    unknown
+                    584.00ns
                   </span>
                   <span
                     class="treeViewRowColumn treeViewFixedColumn type"
-                    title="IPC"
+                    title="Text"
                   >
-                    IPC
+                    Text
                   </span>
                 </div>
                 <div
@@ -1466,19 +1468,21 @@ exports[`MarkerTable sorts when the start header and duration header is clicked 
                 >
                   <span
                     class="treeViewRowColumn treeViewFixedColumn start"
-                    title="0.002s"
+                    title="0.153s"
                   >
-                    0.002s
+                    0.153s
                   </span>
                   <span
                     class="treeViewRowColumn treeViewFixedColumn duration"
-                    title=""
-                  />
+                    title="584.00ns"
+                  >
+                    584.00ns
+                  </span>
                   <span
                     class="treeViewRowColumn treeViewFixedColumn type"
-                    title="Paint"
+                    title="Text"
                   >
-                    Paint
+                    Text
                   </span>
                 </div>
                 <div
@@ -1510,21 +1514,19 @@ exports[`MarkerTable sorts when the start header and duration header is clicked 
                 >
                   <span
                     class="treeViewRowColumn treeViewFixedColumn start"
-                    title="0.153s"
+                    title="0.002s"
                   >
-                    0.153s
+                    0.002s
                   </span>
                   <span
                     class="treeViewRowColumn treeViewFixedColumn duration"
-                    title="584.00ns"
-                  >
-                    584.00ns
-                  </span>
+                    title=""
+                  />
                   <span
                     class="treeViewRowColumn treeViewFixedColumn type"
-                    title="Text"
+                    title="Paint"
                   >
-                    Text
+                    Paint
                   </span>
                 </div>
                 <div
@@ -1533,21 +1535,21 @@ exports[`MarkerTable sorts when the start header and duration header is clicked 
                 >
                   <span
                     class="treeViewRowColumn treeViewFixedColumn start"
-                    title="0.153s"
+                    title="0.108s"
                   >
-                    0.153s
+                    0.108s
                   </span>
                   <span
                     class="treeViewRowColumn treeViewFixedColumn duration"
-                    title="584.00ns"
+                    title="unknown"
                   >
-                    584.00ns
+                    unknown
                   </span>
                   <span
                     class="treeViewRowColumn treeViewFixedColumn type"
-                    title="Text"
+                    title="IPC"
                   >
-                    Text
+                    IPC
                   </span>
                 </div>
                 <div
@@ -1556,21 +1558,19 @@ exports[`MarkerTable sorts when the start header and duration header is clicked 
                 >
                   <span
                     class="treeViewRowColumn treeViewFixedColumn start"
-                    title="0.000s"
+                    title="0.158s"
                   >
-                    0.000s
+                    0.158s
                   </span>
                   <span
                     class="treeViewRowColumn treeViewFixedColumn duration"
-                    title="0s"
-                  >
-                    0s
-                  </span>
+                    title=""
+                  />
                   <span
                     class="treeViewRowColumn treeViewFixedColumn type"
-                    title="UserTiming"
+                    title="Log"
                   >
-                    UserTiming
+                    Log
                   </span>
                 </div>
               </div>
@@ -1590,7 +1590,7 @@ exports[`MarkerTable sorts when the start header and duration header is clicked 
                   aria-level="1"
                   aria-selected="false"
                   class="treeViewRow treeViewRowScrolledColumns even"
-                  id="treeViewRow-5"
+                  id="treeViewRow-0"
                   role="treeitem"
                   style="height: 16px; line-height: 16px;"
                 >
@@ -1604,15 +1604,14 @@ exports[`MarkerTable sorts when the start header and duration header is clicked 
                   <span
                     class="treeViewRowColumn treeViewMainColumn name"
                   >
-                    (nsJarProtocol) nsJARChannel::nsJARChannel [this=0x87f1ec80]
-
+                    foobar
                   </span>
                 </div>
                 <div
                   aria-level="1"
                   aria-selected="false"
                   class="treeViewRow treeViewRowScrolledColumns odd"
-                  id="treeViewRow-2"
+                  id="treeViewRow-3"
                   role="treeitem"
                   style="height: 16px; line-height: 16px;"
                 >
@@ -1626,14 +1625,14 @@ exports[`MarkerTable sorts when the start header and duration header is clicked 
                   <span
                     class="treeViewRowColumn treeViewMainColumn name"
                   >
-                    IPCOut — PContent::Msg_PreferenceUpdate — sent to 2222
+                    setTimeout — 5.5
                   </span>
                 </div>
                 <div
                   aria-level="1"
                   aria-selected="false"
                   class="treeViewRow treeViewRowScrolledColumns even"
-                  id="treeViewRow-1"
+                  id="treeViewRow-4"
                   role="treeitem"
                   style="height: 16px; line-height: 16px;"
                 >
@@ -1647,7 +1646,7 @@ exports[`MarkerTable sorts when the start header and duration header is clicked 
                   <span
                     class="treeViewRowColumn treeViewMainColumn name"
                   >
-                    NotifyDidPaint
+                    Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed eget magna sed magna vehicula congue id id nulla. Ut convallis, neque consequat aliquam egestas, dui urna interdum quam, id semper magna erat et nisi. Vivamus molestie quis ligula eget aliquam. Sed facilisis, turpis sed facilisis posuere, risus odio convallis velit, vitae vehicula justo risus at ipsum. Proin non porttitor neque. Vivamus fringilla ex nec iaculis cursus. Vestibulum suscipit mauris sem, vitae gravida ipsum fermentum id. Q…
                   </span>
                 </div>
                 <div
@@ -1675,7 +1674,7 @@ exports[`MarkerTable sorts when the start header and duration header is clicked 
                   aria-level="1"
                   aria-selected="false"
                   class="treeViewRow treeViewRowScrolledColumns even"
-                  id="treeViewRow-3"
+                  id="treeViewRow-1"
                   role="treeitem"
                   style="height: 16px; line-height: 16px;"
                 >
@@ -1689,14 +1688,14 @@ exports[`MarkerTable sorts when the start header and duration header is clicked 
                   <span
                     class="treeViewRowColumn treeViewMainColumn name"
                   >
-                    setTimeout — 5.5
+                    NotifyDidPaint
                   </span>
                 </div>
                 <div
                   aria-level="1"
                   aria-selected="false"
                   class="treeViewRow treeViewRowScrolledColumns odd"
-                  id="treeViewRow-4"
+                  id="treeViewRow-2"
                   role="treeitem"
                   style="height: 16px; line-height: 16px;"
                 >
@@ -1710,14 +1709,14 @@ exports[`MarkerTable sorts when the start header and duration header is clicked 
                   <span
                     class="treeViewRowColumn treeViewMainColumn name"
                   >
-                    Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed eget magna sed magna vehicula congue id id nulla. Ut convallis, neque consequat aliquam egestas, dui urna interdum quam, id semper magna erat et nisi. Vivamus molestie quis ligula eget aliquam. Sed facilisis, turpis sed facilisis posuere, risus odio convallis velit, vitae vehicula justo risus at ipsum. Proin non porttitor neque. Vivamus fringilla ex nec iaculis cursus. Vestibulum suscipit mauris sem, vitae gravida ipsum fermentum id. Q…
+                    IPCOut — PContent::Msg_PreferenceUpdate — sent to 2222
                   </span>
                 </div>
                 <div
                   aria-level="1"
                   aria-selected="false"
                   class="treeViewRow treeViewRowScrolledColumns even"
-                  id="treeViewRow-0"
+                  id="treeViewRow-5"
                   role="treeitem"
                   style="height: 16px; line-height: 16px;"
                 >
@@ -1731,7 +1730,8 @@ exports[`MarkerTable sorts when the start header and duration header is clicked 
                   <span
                     class="treeViewRowColumn treeViewMainColumn name"
                   >
-                    foobar
+                    (nsJarProtocol) nsJARChannel::nsJARChannel [this=0x87f1ec80]
+
                   </span>
                 </div>
               </div>

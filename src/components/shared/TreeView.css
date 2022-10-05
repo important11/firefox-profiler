@@ -107,11 +107,11 @@
   opacity: 0;
 }
 
-.treeViewHeaderColumn.sortAscending::after {
+.treeViewHeaderColumn.sortDescending::after {
   content: ' ▲';
 }
 
-.treeViewHeaderColumn.sortDescending::after {
+.treeViewHeaderColumn.sortAscending::after {
   content: ' ▼ ';
 }
 
