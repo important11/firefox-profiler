@@ -1955,10 +1955,15 @@ export function changeMouseTimePosition(
   };
 }
 
-export function openSourceView(file: string, currentTab: TabSlug): Action {
+export function openSourceView(
+  file: string,
+  name: string | null,
+  currentTab: TabSlug
+): Action {
   return {
     type: 'OPEN_SOURCE_VIEW',
     file,
+    name,
     currentTab,
   };
 }
