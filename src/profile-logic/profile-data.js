@@ -230,15 +230,10 @@ export type CallNodeInfoWithFuncMapping = {|
 |};
 
 /**
- * Generate the CallNodeInfo which contains the CallNodeTable, and a map to convert
- * an IndexIntoStackTable to a IndexIntoCallNodeTable. This function runs
- * produces infos with one call node per function for the FunctionTable view.
- *
- * It removes all functions without any samples and uses the category (and subcategory) of the last
- * frame for each function.
- *
- * See `src/types/profile-derived.js` for the type definitions.
- * See `docs-developer/call-trees.md` for a detailed explanation of CallNodes.
+ * Generates a flat call tree for the FunctionTable view, with one call node per
+ * function. The retun value consists of a CallNodeInfo which contains the
+ * CallNodeTable, and of two maps to convert between an IndexIntoFuncTable and
+ * an IndexIntoCallNodeTable.
  */
 export function getFunctionTableCallNodeInfo(
   stackTable: StackTable,
@@ -252,39 +247,32 @@ export function getFunctionTableCallNodeInfo(
     const stackIndexToCallNodeIndex = new Uint32Array(stackTable.length);
 
     // The callNodeTable components, per function index
-    const prefix: Array<IndexIntoCallNodeTable> = [];
     const func: Array<IndexIntoFuncTable> = [];
     const category: Array<IndexIntoCategoryList> = [];
     const subcategory: Array<IndexIntoSubcategoryListForCategory> = [];
-    const depth: Array<number> = [];
     const sourceFramesInlinedIntoSymbol: Array<
       IndexIntoNativeSymbolTable | -1 | null
     > = [];
-    let length = 0;
 
-    function addCallNode(
+    function ensureCallNodeForFunction(
       funcIndex: number,
       categoryIndex: number,
       subcategoryIndex: number,
       inlinedIntoSymbol: IndexIntoNativeSymbolTable | null
-    ) {
-      if (funcToCallNodeIndex[funcIndex] === -1) {
-        // we found a new function
-        funcToCallNodeIndex[funcIndex] = length;
+    ): IndexIntoCallNodeTable {
+      let callNodeIndex = funcToCallNodeIndex[funcIndex];
+      if (callNodeIndex === -1) {
+        // We found a new function.
+        callNodeIndex = callNodeToFuncIndex.length;
         callNodeToFuncIndex.push(funcIndex);
-        length++;
-      }
-      const callNodeIndex = funcToCallNodeIndex[funcIndex]; // index into the other tables
-      prefix[callNodeIndex] = -1; // we have a flat call tree
-      func[callNodeIndex] = funcIndex;
-      depth[callNodeIndex] = 0; // we have a flat call tree
+        funcToCallNodeIndex[funcIndex] = callNodeIndex;
 
-      if (sourceFramesInlinedIntoSymbol[callNodeIndex] === undefined) {
-        // first time we visit it
+        func[callNodeIndex] = funcIndex;
         sourceFramesInlinedIntoSymbol[callNodeIndex] = inlinedIntoSymbol;
         category[callNodeIndex] = categoryIndex;
         subcategory[callNodeIndex] = subcategoryIndex;
       } else {
+        // Combine sourceFramesInlinedIntoSymbol, category and subcategory info.
         if (
           sourceFramesInlinedIntoSymbol[callNodeIndex] !== inlinedIntoSymbol
         ) {
@@ -301,6 +289,7 @@ export function getFunctionTableCallNodeInfo(
           subcategory[callNodeIndex] = subcategoryIndex;
         }
       }
+      return callNodeIndex;
     }
 
     // Go through each stack, and create a new callNode table, which is based off of
@@ -315,17 +304,18 @@ export function getFunctionTableCallNodeInfo(
           ? frameTable.nativeSymbol[frameIndex]
           : null;
 
-      addCallNode(
+      const callNodeIndex = ensureCallNodeForFunction(
         funcIndex,
         categoryIndex,
         subcategoryIndex,
         inlinedIntoSymbol
       );
-      stackIndexToCallNodeIndex[stackIndex] = funcToCallNodeIndex[funcIndex]; // map the stackIndex correctly
+      stackIndexToCallNodeIndex[stackIndex] = callNodeIndex;
     }
 
+    const length = callNodeToFuncIndex.length;
     const callNodeTable: CallNodeTable = {
-      prefix: new Int32Array(prefix),
+      prefix: new Int32Array(length).fill(-1),
       func: new Int32Array(func),
       category: new Int32Array(category),
       subcategory: new Int32Array(subcategory),
