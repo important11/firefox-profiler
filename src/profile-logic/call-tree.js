@@ -1,4 +1,3 @@
-/* eslint-disable prettier/prettier */
 /* This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
@@ -62,6 +61,10 @@ function extractFaviconFromLibname(libname: string): string | null {
       // Upgrade http requests.
       url.protocol = 'https:';
     }
+    console.error(
+      'Error while extracing the favicon from the libname',
+      libname
+    );
     return url.href;
   } catch (e) {
     return null;

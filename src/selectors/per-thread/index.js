@@ -344,7 +344,7 @@ export const selectedFunctionTableNodeSelectors: NodeSelectors = (() => {
 
   const getTimingsForSidebar: Selector<TimingsForPath> = createSelector(
     selectedThreadSelectors.getSelectedFunctionTableFunction,
-    selectedThreadSelectors.getFunctionTableCallNodeInfo,
+    selectedThreadSelectors.getFunctionTableCallNodeInfoWithFuncMapping,
     ProfileSelectors.getProfileInterval,
     selectedThreadSelectors.getPreviewFilteredThread,
     selectedThreadSelectors.getThread,

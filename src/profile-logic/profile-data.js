@@ -230,9 +230,10 @@ export type CallNodeInfoWithFuncMapping = {|
 |};
 
 /**
- * Generate the CallNodeInfo which contains the CallNodeTable, and a map to convert
+ * Generate the CallNodeInfo and a function to callnode index mapping (in both directions).
+ * The CallNodeInfo contains the CallNodeTable, and a map to convert
  * an IndexIntoStackTable to a IndexIntoCallNodeTable. This function runs
- * produces infos with one call node per function for the FunctionTable view.
+ * produces infos with one call node per function for the FunctionTableView.
  *
  * It removes all functions without any samples and uses the category (and subcategory) of the last
  * frame for each function.
@@ -240,7 +241,7 @@ export type CallNodeInfoWithFuncMapping = {|
  * See `src/types/profile-derived.js` for the type definitions.
  * See `docs-developer/call-trees.md` for a detailed explanation of CallNodes.
  */
-export function getFunctionTableCallNodeInfo(
+export function getFunctionTableCallNodeInfoWithFuncMapping(
   stackTable: StackTable,
   frameTable: FrameTable,
   funcTable: FuncTable,
@@ -484,8 +485,8 @@ export function getSamplesSelectedStates(
 /**
  * Go through the samples, and determine their current state.
  *
- * For samples that are neither 'FILTERED_OUT_*' nor 'SELECTED', this function compares
- * the sample's call node to the selected call node, in tree order. It uses the same
+ * For samples that are neither 'FILTERED_OUT_*' nor 'SELECTED', 
+ * this function uses 'UNSELECTED_ORDERED_AFTER_SELECTED'. It uses the same
  * ordering as the function compareCallNodes in getTreeOrderComparator.
  */
 export function getSamplesSelectedStatesForFunction(
@@ -1008,8 +1009,8 @@ export function getTimingsForCallNodeIndex(
 }
 
 /**
- * This function returns the timings for a specific path. The algorithm is
- * adjusted when the call tree is inverted.
+ * This function returns the timings for a specific function.
+ * 
  * Note that the unfilteredThread should be the original thread before any filtering
  * (by range or other) happens. Also sampleIndexOffset needs to be properly
  * specified and is the offset to be applied on thread's indexes to access

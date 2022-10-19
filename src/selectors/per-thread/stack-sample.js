@@ -89,7 +89,7 @@ export function getStackAndSampleSelectorsPerThread(
     }
   );
 
-  const getFunctionTableCallNodeInfo: Selector<CallNodeInfoWithFuncMapping> =
+  const getFunctionTableCallNodeInfoWithFuncMapping: Selector<CallNodeInfoWithFuncMapping> =
     createSelector(
       threadSelectors.getFilteredThread,
       ProfileSelectors.getDefaultCategory,
@@ -97,7 +97,7 @@ export function getStackAndSampleSelectorsPerThread(
         { stackTable, frameTable, funcTable }: Thread,
         defaultCategory: IndexIntoCategoryList
       ): CallNodeInfoWithFuncMapping => {
-        return ProfileData.getFunctionTableCallNodeInfo(
+        return ProfileData.getFunctionTableCallNodeInfoWithFuncMapping(
           stackTable,
           frameTable,
           funcTable,
@@ -156,7 +156,7 @@ export function getStackAndSampleSelectorsPerThread(
 
   const getSelectedFunctionTableCallNodeIndex: Selector<IndexIntoCallNodeTable | null> =
     createSelector(
-      getFunctionTableCallNodeInfo,
+      getFunctionTableCallNodeInfoWithFuncMapping,
       getSelectedFunctionTableFunction,
       (info, selectedFunction) => {
         return selectedFunction !== null
@@ -189,52 +189,66 @@ export function getStackAndSampleSelectorsPerThread(
     threadSelectors.getTabFilteredThread,
     getCallNodeInfo,
     getSelectedCallNodeIndex,
-    getFunctionTableCallNodeInfo,
+    getFunctionTableCallNodeInfoWithFuncMapping,
     getSelectedFunctionTableCallNodeIndex,
+    UrlState.getSelectedTab,
     (
       thread,
       tabFilteredThread,
       callNodeInfo,
       selectedCallNode,
       functionTableCallNodeInfo,
-      selectedFunctionTableCallNodeIndex
+      selectedFunctionTableCallNodeIndex,
+      selectedTab
     ) => {
       if (thread.isJsTracer) {
         // This is currently to slow to compute in JS Tracer threads.
         return null;
       }
-      const { info, selected } =
-        selectedCallNode !== null
-          ? { info: callNodeInfo, selected: selectedCallNode }
-          : {
-              info: functionTableCallNodeInfo.callNodeInfo,
-              selected: selectedFunctionTableCallNodeIndex,
-            };
-      const { callNodeTable, stackIndexToCallNodeIndex } = info;
-      const sampleIndexToCallNodeIndex =
-        ProfileData.getSampleIndexToCallNodeIndex(
-          thread.samples.stack,
-          stackIndexToCallNodeIndex
-        );
-      const activeTabFilteredCallNodeIndex =
-        ProfileData.getSampleIndexToCallNodeIndex(
-          tabFilteredThread.samples.stack,
-          stackIndexToCallNodeIndex
-        );
-      return selectedCallNode !== null
-        ? ProfileData.getSamplesSelectedStates(
-            callNodeTable,
-            sampleIndexToCallNodeIndex,
-            activeTabFilteredCallNodeIndex,
-            selected
-          )
-        : ProfileData.getSamplesSelectedStatesForFunction(
-            functionTableCallNodeInfo,
-            sampleIndexToCallNodeIndex,
-            activeTabFilteredCallNodeIndex,
-            selectedFunctionTableCallNodeIndex,
-            tabFilteredThread
+      if (selectedTab === 'calltree' && selectedCallNode !== null) {
+        const { info, selected } = {
+          info: callNodeInfo,
+          selected: selectedCallNode,
+        };
+        const { callNodeTable, stackIndexToCallNodeIndex } = info;
+        const sampleIndexToCallNodeIndex =
+          ProfileData.getSampleIndexToCallNodeIndex(
+            thread.samples.stack,
+            stackIndexToCallNodeIndex
           );
+        const activeTabFilteredCallNodeIndex =
+          ProfileData.getSampleIndexToCallNodeIndex(
+            tabFilteredThread.samples.stack,
+            stackIndexToCallNodeIndex
+          );
+        return ProfileData.getSamplesSelectedStates(
+          callNodeTable,
+          sampleIndexToCallNodeIndex,
+          activeTabFilteredCallNodeIndex,
+          selected
+        );
+      } else if (selectedTab === 'function-table') {
+        const { stackIndexToCallNodeIndex } =
+          functionTableCallNodeInfo.callNodeInfo;
+        const sampleIndexToCallNodeIndex =
+          ProfileData.getSampleIndexToCallNodeIndex(
+            thread.samples.stack,
+            stackIndexToCallNodeIndex
+          );
+        const activeTabFilteredCallNodeIndex =
+          ProfileData.getSampleIndexToCallNodeIndex(
+            tabFilteredThread.samples.stack,
+            stackIndexToCallNodeIndex
+          );
+        return ProfileData.getSamplesSelectedStatesForFunction(
+          functionTableCallNodeInfo,
+          sampleIndexToCallNodeIndex,
+          activeTabFilteredCallNodeIndex,
+          selectedFunctionTableCallNodeIndex,
+          tabFilteredThread
+        );
+      }
+      return null;
     }
   );
 
@@ -306,7 +320,7 @@ export function getStackAndSampleSelectorsPerThread(
       threadSelectors.getFilteredThread,
       ProfileSelectors.getPreviewSelection,
       threadSelectors.getFilteredSamplesForCallTree,
-      getFunctionTableCallNodeInfo,
+      getFunctionTableCallNodeInfoWithFuncMapping,
       (thread, previewSelection, samples, info) => {
         let selectionStart = 0;
         let selectionEnd = samples.length;
@@ -332,7 +346,7 @@ export function getStackAndSampleSelectorsPerThread(
   const getFunctionTableCallTree: Selector<CallTree.CallTree> = createSelector(
     threadSelectors.getPreviewFilteredThread,
     ProfileSelectors.getProfileInterval,
-    getFunctionTableCallNodeInfo,
+    getFunctionTableCallNodeInfoWithFuncMapping,
     ProfileSelectors.getCategories,
     UrlState.getImplementationFilter,
     getFunctionTableCallTreeCountsAndSummary,
@@ -394,7 +408,7 @@ export function getStackAndSampleSelectorsPerThread(
     unfilteredSamplesRange,
     getWeightTypeForCallTree,
     getCallNodeInfo,
-    getFunctionTableCallNodeInfo,
+    getFunctionTableCallNodeInfoWithFuncMapping,
     getSourceViewStackLineInfo,
     getSelectedCallNodePath,
     getSelectedCallNodeIndex,

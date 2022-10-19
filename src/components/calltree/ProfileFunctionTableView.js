@@ -40,7 +40,6 @@ class ProfileFunctionTableViewImpl extends PureComponent<Props> {
     return (
       <div
         className="functionTableAndSidebarWrapper"
-        id="calltree-tab"
         role="tabpanel"
         aria-labelledby="function-table-tab-button"
       >
@@ -52,6 +51,8 @@ class ProfileFunctionTableViewImpl extends PureComponent<Props> {
   }
 }
 
+const _emptyExpandedCallNodexIndexes = [];
+
 export const ProfileFunctionTableView = explicitConnect<
   {||},
   StateProps,
@@ -61,14 +62,14 @@ export const ProfileFunctionTableView = explicitConnect<
     tabslug: 'function-table',
     tree: selectedThreadSelectors.getFunctionTableCallTree(state),
     callNodeInfo:
-      selectedThreadSelectors.getFunctionTableCallNodeInfo(state).callNodeInfo,
+      selectedThreadSelectors.getFunctionTableCallNodeInfoWithFuncMapping(state).callNodeInfo,
     selectedCallNodeIndex:
       selectedThreadSelectors.getSelectedFunctionTableCallNodeIndex(state),
     // right clicking is not supported for now
     // as most of the transformations do not make sense in this context
     rightClickedCallNodeIndex: null,
     // we cannot expand any call nodes
-    expandedCallNodeIndexes: [],
+    expandedCallNodeIndexes: _emptyExpandedCallNodexIndexes,
     callNodeMaxDepth: 0,
   }),
   mapDispatchToProps: {
