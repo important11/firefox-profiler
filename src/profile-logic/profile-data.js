@@ -480,7 +480,7 @@ export function getSamplesSelectedStates(
 /**
  * Go through the samples, and determine their current state.
  *
- * For samples that are neither 'FILTERED_OUT_*' nor 'SELECTED', 
+ * For samples that are neither 'FILTERED_OUT_*' nor 'SELECTED',
  * this function uses 'UNSELECTED_ORDERED_AFTER_SELECTED'. It uses the same
  * ordering as the function compareCallNodes in getTreeOrderComparator.
  */
@@ -1005,7 +1005,7 @@ export function getTimingsForCallNodeIndex(
 
 /**
  * This function returns the timings for a specific function.
- * 
+ *
  * Note that the unfilteredThread should be the original thread before any filtering
  * (by range or other) happens. Also sampleIndexOffset needs to be properly
  * specified and is the offset to be applied on thread's indexes to access

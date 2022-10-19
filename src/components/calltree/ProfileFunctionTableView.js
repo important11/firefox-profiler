@@ -62,7 +62,8 @@ export const ProfileFunctionTableView = explicitConnect<
     tabslug: 'function-table',
     tree: selectedThreadSelectors.getFunctionTableCallTree(state),
     callNodeInfo:
-      selectedThreadSelectors.getFunctionTableCallNodeInfoWithFuncMapping(state).callNodeInfo,
+      selectedThreadSelectors.getFunctionTableCallNodeInfoWithFuncMapping(state)
+        .callNodeInfo,
     selectedCallNodeIndex:
       selectedThreadSelectors.getSelectedFunctionTableCallNodeIndex(state),
     // right clicking is not supported for now

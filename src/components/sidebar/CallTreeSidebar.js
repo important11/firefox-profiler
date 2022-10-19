@@ -524,8 +524,8 @@ export const FunctionTableCallTreeSidebar = explicitConnect<
     selectedNodeIndex:
       selectedThreadSelectors.getSelectedFunctionTableCallNodeIndex(state),
     callNodeTable:
-      selectedThreadSelectors.getFunctionTableCallNodeInfoWithFuncMapping(state).callNodeInfo
-        .callNodeTable,
+      selectedThreadSelectors.getFunctionTableCallNodeInfoWithFuncMapping(state)
+        .callNodeInfo.callNodeTable,
     selectedThreadsKey: getSelectedThreadsKey(state),
     name: getFunctionName(selectedFunctionTableNodeSelectors.getName(state)),
     lib: selectedFunctionTableNodeSelectors.getLib(state),

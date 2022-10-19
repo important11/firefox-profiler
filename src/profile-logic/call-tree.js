@@ -640,13 +640,17 @@ class SummaryCacheTreeNode<T> {
     this._sums = null;
     this._funcs = funcs;
     this._finalSliceSize = finalSliceSize;
-    const finalSliceCount = finalSliceSize < endIndex - startIndex ? Math.ceil(
-      (this._endIndex - this._startIndex) / this._finalSliceSize
-    ) : 0;
+    const finalSliceCount =
+      finalSliceSize < endIndex - startIndex
+        ? Math.ceil((this._endIndex - this._startIndex) / this._finalSliceSize)
+        : 0;
     this._numberOfChildren = Math.min(finalSliceCount, MAX_SLICES_PER_LEVEL);
-    this._sliceSize = this._numberOfChildren > 0 ? Math.ceil(
-      (this._endIndex - this._startIndex) / this._numberOfChildren
-    ) : 0;
+    this._sliceSize =
+      this._numberOfChildren > 0
+        ? Math.ceil(
+            (this._endIndex - this._startIndex) / this._numberOfChildren
+          )
+        : 0;
     this._children = new Array(this._numberOfChildren).fill(null);
     this._lastComputation = null;
   }
@@ -656,14 +660,19 @@ class SummaryCacheTreeNode<T> {
       this._lastComputation = { start, end, sums: this._compute(start, end) };
       return this._lastComputation.sums;
     }
-    const {start: lastStart, end: lastEnd, sums: lastSums} = this._lastComputation;
+    const {
+      start: lastStart,
+      end: lastEnd,
+      sums: lastSums,
+    } = this._lastComputation;
     if (lastStart === start && lastEnd === end) {
       return lastSums;
     }
     // check whether just computing looks at less samples
-    const rangeForCachedComputation = Math.abs(lastStart - start) + Math.abs(lastEnd - end);
+    const rangeForCachedComputation =
+      Math.abs(lastStart - start) + Math.abs(lastEnd - end);
     if (rangeForCachedComputation > Math.abs(start - end)) {
-      this._lastComputation = { start, end, sums: this._compute(start, end) }; 
+      this._lastComputation = { start, end, sums: this._compute(start, end) };
     } else {
       let result = lastSums;
       const applySlice = (start: number, end: number) => {
@@ -690,9 +699,7 @@ class SummaryCacheTreeNode<T> {
     if (start === end) {
       return this._funcs.compute(start, end);
     }
-    if (
-      start === this._startIndex && end === this._endIndex
-    ) {
+    if (start === this._startIndex && end === this._endIndex) {
       // we use this._sums
       return this._computeAll();
     }
@@ -715,10 +722,7 @@ class SummaryCacheTreeNode<T> {
 
   _rangeOfChild(childIndex: number): [number, number] {
     if (childIndex === this._numberOfChildren - 1) {
-      return [
-        this._startIndex + childIndex * this._sliceSize,
-        this._endIndex,
-      ];
+      return [this._startIndex + childIndex * this._sliceSize, this._endIndex];
     }
     return [
       this._startIndex + childIndex * this._sliceSize,
