@@ -78,6 +78,7 @@ import type {
   Tid,
   GlobalTrack,
   KeyboardModifiers,
+  TableViewOptions,
 } from 'firefox-profiler/types';
 import { funcHasRecursiveCall } from '../profile-logic/transforms';
 import { changeStoredProfileNameInDb } from 'firefox-profiler/app-logic/uploaded-profiles-db';
@@ -1952,6 +1953,17 @@ export function changeMouseTimePosition(
   return {
     type: 'CHANGE_MOUSE_TIME_POSITION',
     mouseTimePosition,
+  };
+}
+
+export function changeTableViewOptions(
+  tab: TabSlug,
+  tableViewOptions: TableViewOptions
+): Action {
+  return {
+    type: 'CHANGE_TABLE_VIEW_OPTIONS',
+    tab,
+    tableViewOptions,
   };
 }
 
