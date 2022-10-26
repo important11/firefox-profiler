@@ -2605,13 +2605,14 @@ export function getCategoryPairLabel(
 /** Returns the category if the subcategory is -1, else the subcategory */
 export function getLastCategoryPartLabel(
   categories: CategoryList,
+  categoryName: string,
   categoryIndex: number,
   subcategoryIndex: number
 ): string {
   const category = categories[categoryIndex];
   return subcategoryIndex !== -1
     ? `${category.subcategories[subcategoryIndex]}`
-    : `${category.name}`;
+    : categoryName;
 }
 
 /**

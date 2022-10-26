@@ -43,7 +43,7 @@
 }
 
 .tooltipCallNodeGraphRunning {
-  height: var(--graph-height);
+  height: calc(var(--graph-height) / 2 - 1px);
   background-color: var(--running-color);
   border-radius: 2px;
 }
@@ -52,23 +52,14 @@
   position: absolute;
   top: 0;
   left: 0;
-  height: var(--graph-height);
+  height: calc(var(--graph-height) / 2 - 1px);
   background-color: var(--self-color);
   border-radius: 2px;
+  margin-top: calc(var(--graph-height) / 2);
 }
 
-.tooltipCallNodeCategory .tooltipCallNodeGraphRunning {
-  filter: brightness(170%) contrast(90%) saturate(90%);
-}
-
-/* used for hard to lighten color */
-.tooltipCallNodeCategory .tooltipCallNodeGraphRunning.outlineBorder {
-  outline: #3c3c3c solid 1px;
-  outline-offset: -1px;
-}
-
-.tooltipCallNodeCategory .tooltipRowUnderlined {
-  border-bottom: 1px solid var(--grey-30);
+.tooltipCallNodeCategory .tooltipCategoryRowHeader {
+  font-weight: bold;
 }
 
 .tooltipCallNodeTiming {

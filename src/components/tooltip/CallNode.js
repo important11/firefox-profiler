@@ -40,10 +40,6 @@ import classNames from 'classnames';
 const GRAPH_WIDTH = 150;
 const GRAPH_HEIGHT = 10;
 
-function isHardToLightenCategoryColor(category: string): boolean {
-  return ['grey', 'yellow', 'red', 'lightred', 'darkgray'].includes(category);
-}
-
 type Props = {|
   +thread: Thread,
   +weightType: WeightType,
@@ -92,7 +88,9 @@ export class TooltipCallNode extends React.PureComponent<Props> {
         <div
           className={
             'tooltipLabel ' +
-            (addTooltipCategoryLabelClassToHeader ? 'tooltipCategoryLabel' : '')
+            (addTooltipCategoryLabelClassToHeader
+              ? 'tooltipCategoryLabel tooltipCategoryRowHeader'
+              : '')
           }
         >
           Overall
@@ -100,7 +98,9 @@ export class TooltipCallNode extends React.PureComponent<Props> {
         <div
           className={
             'tooltipCallNodeGraph ' +
-            (addTooltipCategoryLabelClassToHeader ? 'tooltipCategoryRow' : '')
+            (addTooltipCategoryLabelClassToHeader
+              ? 'tooltipCategoryRow tooltipCategoryRowHeader'
+              : '')
           }
         >
           <div
@@ -119,7 +119,9 @@ export class TooltipCallNode extends React.PureComponent<Props> {
         <div
           className={
             'tooltipCallNodeTiming ' +
-            (addTooltipCategoryLabelClassToHeader ? 'tooltipCategoryRow' : '')
+            (addTooltipCategoryLabelClassToHeader
+              ? 'tooltipCategoryRow tooltipCategoryRowHeader'
+              : '')
           }
         >
           {formatCallNodeNumberWithUnit(weightType, isHighPrecision, totalTime)}
@@ -127,7 +129,9 @@ export class TooltipCallNode extends React.PureComponent<Props> {
         <div
           className={
             'tooltipCallNodeTiming ' +
-            (addTooltipCategoryLabelClassToHeader ? 'tooltipCategoryRow' : '')
+            (addTooltipCategoryLabelClassToHeader
+              ? 'tooltipCategoryRow tooltipCategoryRowHeader'
+              : '')
           }
         >
           {selfTime === 0
@@ -164,8 +168,9 @@ export class TooltipCallNode extends React.PureComponent<Props> {
     const isHighPrecision = Boolean(thread.isJsTracer);
 
     const categoriesAndTime: {
+      categoryName: string,
       category: number,
-      subCategory: number,
+      subCategory: number, // -1 for category headers
       totalTime: number,
       selfTime: number,
     }[] = [];
@@ -177,24 +182,58 @@ export class TooltipCallNode extends React.PureComponent<Props> {
         const selfTimeValue = selfTime.breakdownByCategory
           ? selfTime.breakdownByCategory[category].entireCategoryValue
           : 0;
+
+        const filteredSubcategoryBreakdown: Array<{
+          subcategory: number,
+          self: number,
+        }> = subcategoryBreakdown
+          .map((subval, i) => {
+            return { subcategory: i, self: subval };
+          })
+          .filter((sub) => sub.self !== 0);
+        console.log(filteredSubcategoryBreakdown);
+        if (filteredSubcategoryBreakdown.length === 1) {
+          const { subcategory } = filteredSubcategoryBreakdown[0];
+          const categoryName =
+            categories[category].name +
+            ': ' +
+            (subcategory !== 0
+              ? categories[category].subcategories[subcategory]
+              : '');
+          console.log(categoryName);
+          categoriesAndTime.push({
+            categoryName,
+            category,
+            subCategory: -1,
+            selfTime: selfTimeValue,
+            totalTime: entireCategoryValue,
+          });
+          return;
+        }
+        const categoryName = categories[category].name;
         categoriesAndTime.push({
+          categoryName,
           category,
           subCategory: -1,
           selfTime: selfTimeValue,
           totalTime: entireCategoryValue,
         });
-        subcategoryBreakdown.forEach((self, subCategory) => {
-          if (self === 0) {
-            return;
-          }
+        if (filteredSubcategoryBreakdown[0].subcategory === 0) {
+          const other = filteredSubcategoryBreakdown[0];
+          filteredSubcategoryBreakdown.pop();
+          filteredSubcategoryBreakdown.push(other);
+        }
+        filteredSubcategoryBreakdown.forEach((sub) => {
+          const { self, subcategory } = sub;
           const selfTimeValue = selfTime.breakdownByCategory
             ? selfTime.breakdownByCategory[category].subcategoryBreakdown[
-                subCategory
+                subcategory
               ]
             : 0;
           categoriesAndTime.push({
+            categoryName,
             category,
-            subCategory: subCategory,
+            subCategory: subcategory,
             selfTime: selfTimeValue,
             totalTime: self,
           });
@@ -222,11 +261,12 @@ export class TooltipCallNode extends React.PureComponent<Props> {
                   tooltipCallNodeName: true,
                   tooltipLabel: true,
                   tooltipCategoryLabel: entry.subCategory === -1,
-                  tooltipRowUnderlined: entry.subCategory === -1,
+                  tooltipCategoryRowHeader: entry.subCategory === -1,
                 })}
               >
                 {getLastCategoryPartLabel(
                   categories,
+                  entry.categoryName,
                   entry.category,
                   entry.subCategory
                 )}
@@ -244,7 +284,6 @@ export class TooltipCallNode extends React.PureComponent<Props> {
                 <div
                   className={classNames({
                     tooltipCallNodeGraphRunning: true,
-                    outlineBorder: isHardToLightenCategoryColor(categoryColor),
                   })}
                   style={{
                     width: (GRAPH_WIDTH * entry.totalTime) / totalTime.value,
@@ -261,7 +300,7 @@ export class TooltipCallNode extends React.PureComponent<Props> {
                 className={classNames({
                   tooltipCallNodeTiming: true,
                   tooltipCategoryRow: entry.subCategory === -1,
-                  tooltipRowUnderlined: entry.subCategory === -1,
+                  tooltipCategoryRowHeader: entry.subCategory === -1,
                 })}
               >
                 {formatCallNodeNumberWithUnit(
@@ -274,7 +313,7 @@ export class TooltipCallNode extends React.PureComponent<Props> {
                 className={classNames({
                   tooltipCallNodeTiming: true,
                   tooltipCategoryRow: entry.subCategory === -1,
-                  tooltipRowUnderlined: entry.subCategory === -1,
+                  tooltipCategoryRowHeader: entry.subCategory === -1,
                 })}
               >
                 {entry.selfTime === 0
@@ -299,11 +338,7 @@ export class TooltipCallNode extends React.PureComponent<Props> {
     if (!maybeTimings || !maybeDisplayData) {
       return false;
     }
-    const { totalTime } = maybeTimings.forPath;
-    if (!totalTime.breakdownByImplementation) {
-      return false;
-    }
-    return true;
+    return Boolean(maybeTimings.forPath.totalTime.breakdownByImplementation);
   }
 
   _renderImplementationTimings(
@@ -557,10 +592,10 @@ export class TooltipCallNode extends React.PureComponent<Props> {
               {/* Everything in this div needs to come in pairs of two in order to
                 respect the CSS grid. */}
               <div className="tooltipLabel">Total Bytes:</div>
-              <div>{displayData.total}</div>
+              <div>{displayData.totalWithUnit}</div>
               {/* --------------------------------------------------------------- */}
               <div className="tooltipLabel">Self Bytes:</div>
-              <div>{displayData.self}</div>
+              <div>{displayData.selfWithUnit}</div>
               {/* --------------------------------------------------------------- */}
             </div>
           ) : null}
