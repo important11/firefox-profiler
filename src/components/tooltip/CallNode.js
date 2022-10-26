@@ -110,9 +110,8 @@ export class TooltipCallNode extends React.PureComponent<Props> {
           const { subcategory } = filteredSubcategoryBreakdown[0];
           const categoryName =
             categories[category].name +
-            ': ' +
             (subcategory !== 0
-              ? categories[category].subcategories[subcategory]
+              ? ': ' + categories[category].subcategories[subcategory]
               : '');
           categoriesAndTime.push({
             categoryName,
