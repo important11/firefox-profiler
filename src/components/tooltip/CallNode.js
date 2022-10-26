@@ -62,90 +62,6 @@ type Props = {|
  * This includes the Flame Graph and Stack Chart.
  */
 export class TooltipCallNode extends React.PureComponent<Props> {
-  _renderTimingsHeader(
-    displayData: CallNodeDisplayData,
-    selfTime: Milliseconds,
-    totalTime: Milliseconds,
-    weightType: WeightType,
-    isHighPrecision: boolean,
-    addTooltipCategoryLabelClassToHeader: boolean,
-    type: string
-  ) {
-    return (
-      <>
-        {/* grid row -------------------------------------------------- */}
-        <div />
-        <div className="tooltipCallNodeHeader" />
-        <div className="tooltipCallNodeHeader">
-          <span className="tooltipCallNodeHeaderSwatchRunning" />
-          Running
-        </div>
-        <div className="tooltipCallNodeHeader">
-          <span className="tooltipCallNodeHeaderSwatchSelf" />
-          Self
-        </div>
-        {/* grid row -------------------------------------------------- */}
-        <div
-          className={
-            'tooltipLabel ' +
-            (addTooltipCategoryLabelClassToHeader
-              ? 'tooltipCategoryLabel tooltipCategoryRowHeader'
-              : '')
-          }
-        >
-          Overall
-        </div>
-        <div
-          className={
-            'tooltipCallNodeGraph ' +
-            (addTooltipCategoryLabelClassToHeader
-              ? 'tooltipCategoryRow tooltipCategoryRowHeader'
-              : '')
-          }
-        >
-          <div
-            className={`tooltipCallNode${type}GraphRunning`}
-            style={{
-              width: GRAPH_WIDTH,
-            }}
-          />
-          <div
-            className={`tooltipCallNode${type}GraphSelf`}
-            style={{
-              width: (GRAPH_WIDTH * selfTime) / totalTime,
-            }}
-          />
-        </div>
-        <div
-          className={
-            'tooltipCallNodeTiming ' +
-            (addTooltipCategoryLabelClassToHeader
-              ? 'tooltipCategoryRow tooltipCategoryRowHeader'
-              : '')
-          }
-        >
-          {formatCallNodeNumberWithUnit(weightType, isHighPrecision, totalTime)}
-        </div>
-        <div
-          className={
-            'tooltipCallNodeTiming ' +
-            (addTooltipCategoryLabelClassToHeader
-              ? 'tooltipCategoryRow tooltipCategoryRowHeader'
-              : '')
-          }
-        >
-          {selfTime === 0
-            ? '—'
-            : formatCallNodeNumberWithUnit(
-                weightType,
-                isHighPrecision,
-                selfTime
-              )}
-        </div>
-      </>
-    );
-  }
-
   _renderCategoryTimings(
     maybeTimings: ?TimingsForPath,
     maybeDisplayData: ?CallNodeDisplayData
@@ -154,7 +70,6 @@ export class TooltipCallNode extends React.PureComponent<Props> {
       return null;
     }
     const { totalTime, selfTime } = maybeTimings.forPath;
-    const displayData = maybeDisplayData;
     if (!totalTime.breakdownByCategory) {
       return null;
     }
@@ -167,13 +82,13 @@ export class TooltipCallNode extends React.PureComponent<Props> {
     // JS Tracer threads have data relevant to the microsecond level.
     const isHighPrecision = Boolean(thread.isJsTracer);
 
-    const categoriesAndTime: {
+    const categoriesAndTime: Array<{
       categoryName: string,
       category: number,
       subCategory: number, // -1 for category headers
       totalTime: number,
       selfTime: number,
-    }[] = [];
+    }> = [];
     totalTimeBreakdownByCategory.forEach(
       ({ entireCategoryValue, subcategoryBreakdown }, category) => {
         if (entireCategoryValue === 0) {
@@ -191,7 +106,6 @@ export class TooltipCallNode extends React.PureComponent<Props> {
             return { subcategory: i, self: subval };
           })
           .filter((sub) => sub.self !== 0);
-        console.log(filteredSubcategoryBreakdown);
         if (filteredSubcategoryBreakdown.length === 1) {
           const { subcategory } = filteredSubcategoryBreakdown[0];
           const categoryName =
@@ -200,7 +114,6 @@ export class TooltipCallNode extends React.PureComponent<Props> {
             (subcategory !== 0
               ? categories[category].subcategories[subcategory]
               : '');
-          console.log(categoryName);
           categoriesAndTime.push({
             categoryName,
             category,
@@ -243,15 +156,51 @@ export class TooltipCallNode extends React.PureComponent<Props> {
 
     return (
       <div className="tooltipCallNodeCategory">
-        {this._renderTimingsHeader(
-          displayData,
-          selfTime.value,
-          totalTime.value,
-          weightType,
-          isHighPrecision,
-          true,
-          'Category'
-        )}
+        {/* grid row -------------------------------------------------- */}
+        <div />
+        <div className="tooltipCallNodeHeader" />
+        <div className="tooltipCallNodeHeader">
+          <span className="tooltipCallNodeHeaderSwatchRunning" />
+          Running
+        </div>
+        <div className="tooltipCallNodeHeader">
+          <span className="tooltipCallNodeHeaderSwatchSelf" />
+          Self
+        </div>
+        {/* grid row -------------------------------------------------- */}
+        <div className="tooltipLabel tooltipCategoryLabel tooltipCategoryRowHeader">
+          Overall
+        </div>
+        <div className="tooltipCallNodeGraph tooltipCategoryRow tooltipCategoryRowHeader">
+          <div
+            className="tooltipCallNodeCategoryGraphRunning"
+            style={{
+              width: GRAPH_WIDTH,
+            }}
+          />
+          <div
+            className="tooltipCallNodeCategoryGraphSelf"
+            style={{
+              width: (GRAPH_WIDTH * selfTime.value) / totalTime.value,
+            }}
+          />
+        </div>
+        <div className="tooltipCallNodeTiming tooltipCategoryRow tooltipCategoryRowHeader">
+          {formatCallNodeNumberWithUnit(
+            weightType,
+            isHighPrecision,
+            totalTime.value
+          )}
+        </div>
+        <div className="tooltipCallNodeTiming tooltipCategoryRow tooltipCategoryRowHeader">
+          {selfTime.value === 0
+            ? '—'
+            : formatCallNodeNumberWithUnit(
+                weightType,
+                isHighPrecision,
+                selfTime.value
+              )}
+        </div>
         {categoriesAndTime.map((entry, index) => {
           const categoryColor = categories[entry.category].color;
           return (
@@ -349,7 +298,6 @@ export class TooltipCallNode extends React.PureComponent<Props> {
       return null;
     }
     const { totalTime, selfTime } = maybeTimings.forPath;
-    const displayData = maybeDisplayData;
     if (!totalTime.breakdownByImplementation) {
       return null;
     }
@@ -364,15 +312,49 @@ export class TooltipCallNode extends React.PureComponent<Props> {
 
     return (
       <div className="tooltipCallNodeImplementation">
-        {this._renderTimingsHeader(
-          displayData,
-          selfTime.value,
-          totalTime.value,
-          weightType,
-          isHighPrecision,
-          false,
-          'Implementation'
-        )}
+        {/* grid row -------------------------------------------------- */}
+        <div />
+        <div className="tooltipCallNodeHeader" />
+        <div className="tooltipCallNodeHeader">
+          <span className="tooltipCallNodeHeaderSwatchRunning" />
+          Running
+        </div>
+        <div className="tooltipCallNodeHeader">
+          <span className="tooltipCallNodeHeaderSwatchSelf" />
+          Self
+        </div>
+        {/* grid row -------------------------------------------------- */}
+        <div className="tooltipLabel">Overall</div>
+        <div className="tooltipCallNodeGraph">
+          <div
+            className="tooltipCallNodeImplementationGraphRunning"
+            style={{
+              width: GRAPH_WIDTH,
+            }}
+          />
+          <div
+            className="tooltipCallNodeImplementationGraphSelf"
+            style={{
+              width: (GRAPH_WIDTH * selfTime.value) / totalTime.value,
+            }}
+          />
+        </div>
+        <div className="tooltipCallNodeTiming">
+          {formatCallNodeNumberWithUnit(
+            weightType,
+            isHighPrecision,
+            totalTime.value
+          )}
+        </div>
+        <div className="tooltipCallNodeTiming">
+          {selfTime.value === 0
+            ? '—'
+            : formatCallNodeNumberWithUnit(
+                weightType,
+                isHighPrecision,
+                selfTime.value
+              )}
+        </div>
         {/* grid row -------------------------------------------------- */}
         {sortedTotalBreakdownByImplementation.map(
           ([implementation, time], index) => {

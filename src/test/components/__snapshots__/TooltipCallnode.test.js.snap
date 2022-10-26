@@ -34,7 +34,7 @@ exports[`TooltipCallNode handles native allocations 1`] = `
         Total Bytes:
       </div>
       <div>
-        12
+        12 bytes
       </div>
       <div
         class="tooltipLabel"
@@ -42,7 +42,7 @@ exports[`TooltipCallNode handles native allocations 1`] = `
         Self Bytes:
       </div>
       <div>
-        5
+        5 bytes
       </div>
     </div>
     <div
