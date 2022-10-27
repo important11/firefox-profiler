@@ -84,8 +84,8 @@ export class TooltipCallNode extends React.PureComponent<Props> {
 
     const categoriesAndTime: Array<{
       categoryName: string,
-      category: number,
-      subCategory: number, // -1 for category headers
+      category: IndexIntoCategoryList,
+      subCategory: IndexIntoSubcategoryListForCategory | null,
       totalTime: number,
       selfTime: number,
     }> = [];
