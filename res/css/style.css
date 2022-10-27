@@ -41,13 +41,7 @@ body {
   flex-shrink: 1;
 }
 
-.treeAndSidebarWrapper {
-  display: flex;
-  flex: 1;
-  flex-flow: column nowrap;
-}
-
-.functionTableAndSidebarWrapper {
+.treeAndSidebarWrapper, .functionTableAndSidebarWrapper {
   display: flex;
   flex: 1;
   flex-flow: column nowrap;
