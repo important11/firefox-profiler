@@ -220,10 +220,7 @@ export class TooltipCallNode extends React.PureComponent<Props> {
                 )}
               </div>
               <div
-                className={
-                  'tooltipCallNodeGraph ' +
-                  (entry.subCategory === -1 ? 'tooltipCategoryRow' : '')
-                }
+                className={classNames('tooltipCallNodeGraph ', { tooltipCategoryRow: entry.subCategory === -1 })}
                 style={{
                   '--running-color': `var(--category-color-${categoryColor})`,
                   '--self-color': `var(--category-color-${categoryColor})`,
