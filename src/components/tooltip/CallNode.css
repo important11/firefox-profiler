@@ -37,14 +37,11 @@
   margin-top: 3px;
   background-color: var(--grey-30);
   border-radius: 2px;
-
-  --running-color: var(--blue-40);
-  --self-color: var(--blue-60);
 }
 
 .tooltipCallNodeGraphRunning {
   height: calc(var(--graph-height) / 2 - 1px);
-  background-color: var(--running-color);
+  background-color: var(--blue-40);
   border-radius: 2px;
 }
 
@@ -53,13 +50,14 @@
   top: 0;
   left: 0;
   height: calc(var(--graph-height) / 2 - 1px);
-  background-color: var(--self-color);
+  background-color: var(--blue-60);
   border-radius: 2px;
   margin-top: calc(var(--graph-height) / 2);
 }
 
 .tooltipCallNodeCategory .tooltipCategoryRowHeader {
   font-weight: bold;
+  margin-top: 8px;
 }
 
 .tooltipCallNodeTiming {
@@ -97,15 +95,11 @@
   padding-bottom: 5px;
 }
 
-.tooltipCallNodeGraph.tooltipCategoryRow {
+.tooltipCategoryRowHeader.tooltipCallNodeGraph {
+  /* we have to add 3px to the 8px of category row to realign the callnode graph propertly */
   margin-top: 11px;
 }
 
-.tooltipCategoryRow {
-  margin-top: 8px;
-}
-
-.tooltipCategoryLabel {
+.tooltipCategoryRowHeader.tooltipCategoryName {
   padding-right: 4px;
-  margin-top: 8px;
 }

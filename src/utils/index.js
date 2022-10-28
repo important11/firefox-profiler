@@ -110,3 +110,23 @@ export function getTrackSelectionModifiers(
     shift: event.shiftKey && !event.altKey,
   };
 }
+
+export function countPositiveValues(arr: Array<number>): number {
+  let count = 0;
+  for (let i = 0; i < arr.length; i++) {
+    if (arr[i] > 0) {
+      count++;
+    }
+  }
+  return count;
+}
+
+/** returns the first positive index or -1 if there is no such index */
+export function findFirstPositiveIndex(arr: Array<number>): number {
+  for (let i = 0; i < arr.length; i++) {
+    if (arr[i] > 0) {
+      return i;
+    }
+  }
+  return -1;
+}

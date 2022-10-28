@@ -386,7 +386,7 @@ export type OneCategoryBreakdown = {|
   subcategoryBreakdown: Milliseconds[], // { [IndexIntoSubcategoryList]: Milliseconds }
 |};
 export type BreakdownByCategory = OneCategoryBreakdown[]; // { [IndexIntoCategoryList]: OneCategoryBreakdown }
-type ItemTimings = {|
+export type ItemTimings = {|
   selfTime: {|
     // time spent excluding children
     value: Milliseconds,
@@ -2600,19 +2600,6 @@ export function getCategoryPairLabel(
   return subcategoryIndex !== 0
     ? `${category.name}: ${category.subcategories[subcategoryIndex]}`
     : `${category.name}`;
-}
-
-/** Returns the category if the subcategory is -1, else the subcategory */
-export function getLastCategoryPartLabel(
-  categories: CategoryList,
-  categoryName: string,
-  categoryIndex: number,
-  subcategoryIndex: number
-): string {
-  const category = categories[categoryIndex];
-  return subcategoryIndex !== -1
-    ? `${category.subcategories[subcategoryIndex]}`
-    : categoryName;
 }
 
 /**

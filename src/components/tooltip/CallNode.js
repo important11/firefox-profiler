@@ -12,8 +12,11 @@ import { Icon } from 'firefox-profiler/components/shared/Icon';
 import {
   getFriendlyStackTypeName,
   getCategoryPairLabel,
-  getLastCategoryPartLabel,
 } from 'firefox-profiler/profile-logic/profile-data';
+import {
+  countPositiveValues,
+  findFirstPositiveIndex,
+} from 'firefox-profiler/utils';
 
 import type { CallTree } from 'firefox-profiler/profile-logic/call-tree';
 import type {
@@ -32,6 +35,7 @@ import type {
 import type {
   TimingsForPath,
   BreakdownByCategory,
+  ItemTimings,
 } from 'firefox-profiler/profile-logic/profile-data';
 
 import './CallNode.css';
@@ -62,6 +66,99 @@ type Props = {|
  * This includes the Flame Graph and Stack Chart.
  */
 export class TooltipCallNode extends React.PureComponent<Props> {
+  /** Compute the rows of the category tooltip section */
+  _computeCategoriesAndTime({ totalTime, selfTime }: ItemTimings) {
+    const categoriesAndTime: Array<{
+      label: string,
+      color: string,
+      isCategoryHeader: boolean,
+      totalTime: number,
+      selfTime: number,
+    }> = [];
+
+    if (totalTime.breakdownByCategory === null) {
+      return categoriesAndTime;
+    }
+
+    const totalTimeBreakdownByCategory: BreakdownByCategory =
+      totalTime.breakdownByCategory;
+    const { categories } = this.props;
+
+    totalTimeBreakdownByCategory.forEach(
+      ({ entireCategoryValue, subcategoryBreakdown }, category) => {
+        if (entireCategoryValue === 0) {
+          return;
+        }
+        const color = categories[category].color;
+        const selfTimeValue = selfTime.breakdownByCategory
+          ? selfTime.breakdownByCategory[category].entireCategoryValue
+          : 0;
+
+        if (countPositiveValues(subcategoryBreakdown) <= 1) {
+          categoriesAndTime.push({
+            label: getCategoryPairLabel(
+              categories,
+              category,
+              findFirstPositiveIndex(subcategoryBreakdown)
+            ),
+            color,
+            isCategoryHeader: true,
+            selfTime: selfTimeValue,
+            totalTime: entireCategoryValue,
+          });
+          return;
+        }
+
+        // there are at least two subcategories
+
+        const categoryName = categories[category].name;
+
+        categoriesAndTime.push({
+          label: categoryName,
+          color,
+          isCategoryHeader: true,
+          selfTime: selfTimeValue,
+          totalTime: entireCategoryValue,
+        });
+
+        // Start at 1, we'll add the "Other" subcategory at the end if needed.
+        for (
+          let subCategory = 1;
+          subCategory < subcategoryBreakdown.length;
+          subCategory++
+        ) {
+          const subCategoryValue = subcategoryBreakdown[subCategory];
+          if (subCategoryValue === 0) {
+            continue;
+          }
+          const selfTimeValue = selfTime.breakdownByCategory
+            ? selfTime.breakdownByCategory[category].subcategoryBreakdown[
+                subCategory
+              ]
+            : 0;
+          categoriesAndTime.push({
+            label: categories[category].subcategories[subCategory],
+            color,
+            isCategoryHeader: false,
+            selfTime: selfTimeValue,
+            totalTime: subCategoryValue,
+          });
+        }
+        if (subcategoryBreakdown[0] > 0) {
+          // add the 'Other' subcategory at the end
+          categoriesAndTime.push({
+            label: 'Other',
+            color,
+            isCategoryHeader: false,
+            selfTime: selfTimeValue,
+            totalTime: subcategoryBreakdown[0],
+          });
+        }
+      }
+    );
+    return categoriesAndTime;
+  }
+
   _renderCategoryTimings(
     maybeTimings: ?TimingsForPath,
     maybeDisplayData: ?CallNodeDisplayData
@@ -74,84 +171,14 @@ export class TooltipCallNode extends React.PureComponent<Props> {
       return null;
     }
 
-    const totalTimeBreakdownByCategory: BreakdownByCategory =
-      totalTime.breakdownByCategory;
+    const categoriesAndTime = this._computeCategoriesAndTime(
+      maybeTimings.forPath
+    );
 
-    const { thread, weightType, categories } = this.props;
+    const { thread, weightType } = this.props;
 
     // JS Tracer threads have data relevant to the microsecond level.
-    const isHighPrecision = Boolean(thread.isJsTracer);
-
-    const categoriesAndTime: Array<{
-      categoryName: string,
-      category: IndexIntoCategoryList,
-      subCategory: IndexIntoSubcategoryListForCategory | null,
-      totalTime: number,
-      selfTime: number,
-    }> = [];
-    totalTimeBreakdownByCategory.forEach(
-      ({ entireCategoryValue, subcategoryBreakdown }, category) => {
-        if (entireCategoryValue === 0) {
-          return;
-        }
-        const selfTimeValue = selfTime.breakdownByCategory
-          ? selfTime.breakdownByCategory[category].entireCategoryValue
-          : 0;
-
-        const filteredSubcategoryBreakdown: Array<{
-          subcategory: number,
-          self: number,
-        }> = subcategoryBreakdown
-          .map((subval, i) => {
-            return { subcategory: i, self: subval };
-          })
-          .filter((sub) => sub.self !== 0);
-        if (filteredSubcategoryBreakdown.length === 1) {
-          const { subcategory } = filteredSubcategoryBreakdown[0];
-          const categoryName =
-            categories[category].name +
-            (subcategory !== 0
-              ? ': ' + categories[category].subcategories[subcategory]
-              : '');
-          categoriesAndTime.push({
-            categoryName,
-            category,
-            subCategory: -1,
-            selfTime: selfTimeValue,
-            totalTime: entireCategoryValue,
-          });
-          return;
-        }
-        const categoryName = categories[category].name;
-        categoriesAndTime.push({
-          categoryName,
-          category,
-          subCategory: -1,
-          selfTime: selfTimeValue,
-          totalTime: entireCategoryValue,
-        });
-        if (filteredSubcategoryBreakdown[0].subcategory === 0) {
-          const other = filteredSubcategoryBreakdown[0];
-          filteredSubcategoryBreakdown.pop();
-          filteredSubcategoryBreakdown.push(other);
-        }
-        filteredSubcategoryBreakdown.forEach((sub) => {
-          const { self, subcategory } = sub;
-          const selfTimeValue = selfTime.breakdownByCategory
-            ? selfTime.breakdownByCategory[category].subcategoryBreakdown[
-                subcategory
-              ]
-            : 0;
-          categoriesAndTime.push({
-            categoryName,
-            category,
-            subCategory: subcategory,
-            selfTime: selfTimeValue,
-            totalTime: self,
-          });
-        });
-      }
-    );
+    const isHighPrecision: boolean = Boolean(thread.isJsTracer);
 
     return (
       <div className="tooltipCallNodeCategory">
@@ -172,13 +199,13 @@ export class TooltipCallNode extends React.PureComponent<Props> {
         </div>
         <div className="tooltipCallNodeGraph tooltipCategoryRow tooltipCategoryRowHeader">
           <div
-            className="tooltipCallNodeCategoryGraphRunning"
+            className="tooltipCallNodeGraphRunning"
             style={{
               width: GRAPH_WIDTH,
             }}
           />
           <div
-            className="tooltipCallNodeCategoryGraphSelf"
+            className="tooltipCallNodeGraphSelf"
             style={{
               width: (GRAPH_WIDTH * selfTime.value) / totalTime.value,
             }}
@@ -200,52 +227,42 @@ export class TooltipCallNode extends React.PureComponent<Props> {
                 selfTime.value
               )}
         </div>
-        {categoriesAndTime.map((entry, index) => {
-          const categoryColor = categories[entry.category].color;
+        {categoriesAndTime.map((entry) => {
           return (
-            <React.Fragment key={index}>
+            <React.Fragment key={entry.label}>
               <div
                 className={classNames({
                   tooltipCallNodeName: true,
                   tooltipLabel: true,
-                  tooltipCategoryLabel: entry.subCategory === -1,
-                  tooltipCategoryRowHeader: entry.subCategory === -1,
+                  tooltipCategoryRowHeader: entry.isCategoryHeader,
                 })}
               >
-                {getLastCategoryPartLabel(
-                  categories,
-                  entry.categoryName,
-                  entry.category,
-                  entry.subCategory
-                )}
+                {entry.label}
               </div>
               <div
-                className={classNames('tooltipCallNodeGraph ', { tooltipCategoryRow: entry.subCategory === -1 })}
-                style={{
-                  '--running-color': `var(--category-color-${categoryColor})`,
-                  '--self-color': `var(--category-color-${categoryColor})`,
-                }}
+                className={classNames('tooltipCallNodeGraph ', {
+                  tooltipCategoryRowHeader: entry.isCategoryHeader,
+                })}
               >
                 <div
-                  className={classNames({
-                    tooltipCallNodeGraphRunning: true,
-                  })}
+                  className="tooltipCallNodeGraphRunning"
                   style={{
                     width: (GRAPH_WIDTH * entry.totalTime) / totalTime.value,
+                    'background-color': `var(--category-color-${entry.color})`,
                   }}
                 />
                 <div
                   className="tooltipCallNodeGraphSelf"
                   style={{
                     width: (GRAPH_WIDTH * entry.selfTime) / totalTime.value,
+                    'background-color': `var(--category-color-${entry.color})`,
                   }}
                 />
               </div>
               <div
                 className={classNames({
                   tooltipCallNodeTiming: true,
-                  tooltipCategoryRow: entry.subCategory === -1,
-                  tooltipCategoryRowHeader: entry.subCategory === -1,
+                  tooltipCategoryRowHeader: entry.isCategoryHeader,
                 })}
               >
                 {formatCallNodeNumberWithUnit(
@@ -257,8 +274,7 @@ export class TooltipCallNode extends React.PureComponent<Props> {
               <div
                 className={classNames({
                   tooltipCallNodeTiming: true,
-                  tooltipCategoryRow: entry.subCategory === -1,
-                  tooltipCategoryRowHeader: entry.subCategory === -1,
+                  tooltipCategoryRowHeader: entry.isCategoryHeader,
                 })}
               >
                 {entry.selfTime === 0
