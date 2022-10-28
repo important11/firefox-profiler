@@ -13,10 +13,7 @@ import {
   getFriendlyStackTypeName,
   getCategoryPairLabel,
 } from 'firefox-profiler/profile-logic/profile-data';
-import {
-  countPositiveValues,
-  findFirstPositiveIndex,
-} from 'firefox-profiler/utils';
+import { countPositiveValues } from 'firefox-profiler/utils';
 
 import type { CallTree } from 'firefox-profiler/profile-logic/call-tree';
 import type {
@@ -30,12 +27,14 @@ import type {
   CallTreeSummaryStrategy,
   InnerWindowID,
   Page,
+  IndexIntoCategoryList,
+  IndexIntoSubcategoryListForCategory,
 } from 'firefox-profiler/types';
 
 import type {
   TimingsForPath,
-  BreakdownByCategory,
   ItemTimings,
+  OneCategoryBreakdown,
 } from 'firefox-profiler/profile-logic/profile-data';
 
 import './CallNode.css';
@@ -66,97 +65,166 @@ type Props = {|
  * This includes the Flame Graph and Stack Chart.
  */
 export class TooltipCallNode extends React.PureComponent<Props> {
-  /** Compute the rows of the category tooltip section */
-  _computeCategoriesAndTime({ totalTime, selfTime }: ItemTimings) {
-    const categoriesAndTime: Array<{
-      label: string,
-      color: string,
-      isCategoryHeader: boolean,
-      totalTime: number,
-      selfTime: number,
-    }> = [];
+  _renderOneSubCategoryLine(
+    label: string,
+    categoryIndex: IndexIntoCategoryList,
+    subcategoryIndex: IndexIntoSubcategoryListForCategory,
+    selfTime: number,
+    totalTime: number,
+    overallTotalTime: number,
+    isHighPrecision: boolean,
+    isCategoryHeader: boolean
+  ) {
+    const { categories, weightType } = this.props;
+    const color = categories[categoryIndex].color;
+    return (
+      <React.Fragment key={`${categoryIndex}-${subcategoryIndex}`}>
+        <div
+          className={classNames({
+            tooltipCallNodeName: true,
+            tooltipLabel: true,
+            tooltipCategoryRowHeader: isCategoryHeader,
+          })}
+        >
+          {label}
+        </div>
+        <div
+          className={classNames('tooltipCallNodeGraph ', {
+            tooltipCategoryRowHeader: isCategoryHeader,
+          })}
+        >
+          <div
+            className="tooltipCallNodeGraphRunning"
+            style={{
+              width: (GRAPH_WIDTH * totalTime) / overallTotalTime,
+              'background-color': `var(--category-color-${color})`,
+            }}
+          />
+          <div
+            className="tooltipCallNodeGraphSelf"
+            style={{
+              width: (GRAPH_WIDTH * selfTime) / overallTotalTime,
+              'background-color': `var(--category-color-${color})`,
+            }}
+          />
+        </div>
+        <div
+          className={classNames({
+            tooltipCallNodeTiming: true,
+            tooltipCategoryRowHeader: isCategoryHeader,
+          })}
+        >
+          {formatCallNodeNumberWithUnit(weightType, isHighPrecision, totalTime)}
+        </div>
+        <div
+          className={classNames({
+            tooltipCallNodeTiming: true,
+            tooltipCategoryRowHeader: isCategoryHeader,
+          })}
+        >
+          {selfTime === 0
+            ? '—'
+            : formatCallNodeNumberWithUnit(
+                weightType,
+                isHighPrecision,
+                selfTime
+              )}
+        </div>
+      </React.Fragment>
+    );
+  }
 
+  _renderOneCategoryLine(
+    { selfTime, totalTime }: ItemTimings,
+    category: IndexIntoCategoryList,
+    isHighPrecision: boolean
+  ): Array<React.Node> {
     if (totalTime.breakdownByCategory === null) {
-      return categoriesAndTime;
+      return [];
+    }
+    const { entireCategoryValue, subcategoryBreakdown }: OneCategoryBreakdown =
+      totalTime.breakdownByCategory[category];
+    if (entireCategoryValue === 0) {
+      return [];
+    }
+    const { categories } = this.props;
+    const selfTimeValue = selfTime.breakdownByCategory
+      ? selfTime.breakdownByCategory[category].entireCategoryValue
+      : 0;
+
+    const rows = [];
+
+    if (countPositiveValues(subcategoryBreakdown) <= 1) {
+      const subCategory = subcategoryBreakdown.findIndex((val) => val > 0);
+      rows.push(
+        this._renderOneSubCategoryLine(
+          getCategoryPairLabel(categories, category, subCategory),
+          category,
+          subCategory,
+          selfTimeValue,
+          entireCategoryValue,
+          entireCategoryValue,
+          isHighPrecision,
+          true
+        )
+      );
+      return rows;
     }
 
-    const totalTimeBreakdownByCategory: BreakdownByCategory =
-      totalTime.breakdownByCategory;
-    const { categories } = this.props;
+    // there are at least two subcategories
 
-    totalTimeBreakdownByCategory.forEach(
-      ({ entireCategoryValue, subcategoryBreakdown }, category) => {
-        if (entireCategoryValue === 0) {
-          return;
-        }
-        const color = categories[category].color;
-        const selfTimeValue = selfTime.breakdownByCategory
-          ? selfTime.breakdownByCategory[category].entireCategoryValue
-          : 0;
+    const categoryName = categories[category].name;
 
-        if (countPositiveValues(subcategoryBreakdown) <= 1) {
-          categoriesAndTime.push({
-            label: getCategoryPairLabel(
-              categories,
-              category,
-              findFirstPositiveIndex(subcategoryBreakdown)
-            ),
-            color,
-            isCategoryHeader: true,
-            selfTime: selfTimeValue,
-            totalTime: entireCategoryValue,
-          });
-          return;
-        }
-
-        // there are at least two subcategories
-
-        const categoryName = categories[category].name;
-
-        categoriesAndTime.push({
-          label: categoryName,
-          color,
-          isCategoryHeader: true,
-          selfTime: selfTimeValue,
-          totalTime: entireCategoryValue,
-        });
-
-        // Start at 1, we'll add the "Other" subcategory at the end if needed.
-        for (
-          let subCategory = 1;
-          subCategory < subcategoryBreakdown.length;
-          subCategory++
-        ) {
-          const subCategoryValue = subcategoryBreakdown[subCategory];
-          if (subCategoryValue === 0) {
-            continue;
-          }
-          const selfTimeValue = selfTime.breakdownByCategory
-            ? selfTime.breakdownByCategory[category].subcategoryBreakdown[
-                subCategory
-              ]
-            : 0;
-          categoriesAndTime.push({
-            label: categories[category].subcategories[subCategory],
-            color,
-            isCategoryHeader: false,
-            selfTime: selfTimeValue,
-            totalTime: subCategoryValue,
-          });
-        }
-        if (subcategoryBreakdown[0] > 0) {
-          // add the 'Other' subcategory at the end
-          categoriesAndTime.push({
-            label: 'Other',
-            color,
-            isCategoryHeader: false,
-            selfTime: selfTimeValue,
-            totalTime: subcategoryBreakdown[0],
-          });
-        }
-      }
+    rows.push(
+      this._renderOneSubCategoryLine(
+        categoryName,
+        category,
+        -1,
+        selfTimeValue,
+        entireCategoryValue,
+        entireCategoryValue,
+        isHighPrecision,
+        true
+      )
     );
-    return categoriesAndTime;
+
+    const pushSubCategory = (
+      subCategory: IndexIntoSubcategoryListForCategory
+    ) => {
+      const subCategoryValue = subcategoryBreakdown[subCategory];
+      if (subCategoryValue === 0) {
+        return;
+      }
+      const selfTimeValue = selfTime.breakdownByCategory
+        ? selfTime.breakdownByCategory[category].subcategoryBreakdown[
+            subCategory
+          ]
+        : 0;
+      rows.push(
+        this._renderOneSubCategoryLine(
+          categories[category].subcategories[subCategory],
+          category,
+          subCategory,
+          selfTimeValue,
+          subCategoryValue,
+          entireCategoryValue,
+          isHighPrecision,
+          false
+        )
+      );
+    };
+
+    // Start at 1, we'll add the "Other" subcategory at the end if needed.
+    for (
+      let subCategory = 1;
+      subCategory < subcategoryBreakdown.length;
+      subCategory++
+    ) {
+      pushSubCategory(subCategory);
+    }
+
+    pushSubCategory(0);
+    return rows;
   }
 
   _renderCategoryTimings(
@@ -167,18 +235,26 @@ export class TooltipCallNode extends React.PureComponent<Props> {
       return null;
     }
     const { totalTime, selfTime } = maybeTimings.forPath;
-    if (!totalTime.breakdownByCategory) {
+    const totalBreakdownByCategory = totalTime.breakdownByCategory;
+    if (!totalBreakdownByCategory) {
       return null;
     }
-
-    const categoriesAndTime = this._computeCategoriesAndTime(
-      maybeTimings.forPath
-    );
 
     const { thread, weightType } = this.props;
 
     // JS Tracer threads have data relevant to the microsecond level.
     const isHighPrecision: boolean = Boolean(thread.isJsTracer);
+
+    const rows: Array<React.Node> = [];
+    totalBreakdownByCategory.forEach((_, category) => {
+      rows.push(
+        ...this._renderOneCategoryLine(
+          { totalTime, selfTime },
+          category,
+          isHighPrecision
+        )
+      );
+    });
 
     return (
       <div className="tooltipCallNodeCategory">
@@ -227,67 +303,7 @@ export class TooltipCallNode extends React.PureComponent<Props> {
                 selfTime.value
               )}
         </div>
-        {categoriesAndTime.map((entry) => {
-          return (
-            <React.Fragment key={entry.label}>
-              <div
-                className={classNames({
-                  tooltipCallNodeName: true,
-                  tooltipLabel: true,
-                  tooltipCategoryRowHeader: entry.isCategoryHeader,
-                })}
-              >
-                {entry.label}
-              </div>
-              <div
-                className={classNames('tooltipCallNodeGraph ', {
-                  tooltipCategoryRowHeader: entry.isCategoryHeader,
-                })}
-              >
-                <div
-                  className="tooltipCallNodeGraphRunning"
-                  style={{
-                    width: (GRAPH_WIDTH * entry.totalTime) / totalTime.value,
-                    'background-color': `var(--category-color-${entry.color})`,
-                  }}
-                />
-                <div
-                  className="tooltipCallNodeGraphSelf"
-                  style={{
-                    width: (GRAPH_WIDTH * entry.selfTime) / totalTime.value,
-                    'background-color': `var(--category-color-${entry.color})`,
-                  }}
-                />
-              </div>
-              <div
-                className={classNames({
-                  tooltipCallNodeTiming: true,
-                  tooltipCategoryRowHeader: entry.isCategoryHeader,
-                })}
-              >
-                {formatCallNodeNumberWithUnit(
-                  weightType,
-                  isHighPrecision,
-                  entry.totalTime
-                )}
-              </div>
-              <div
-                className={classNames({
-                  tooltipCallNodeTiming: true,
-                  tooltipCategoryRowHeader: entry.isCategoryHeader,
-                })}
-              >
-                {entry.selfTime === 0
-                  ? '—'
-                  : formatCallNodeNumberWithUnit(
-                      weightType,
-                      isHighPrecision,
-                      entry.selfTime
-                    )}
-              </div>
-            </React.Fragment>
-          );
-        })}
+        {rows}
       </div>
     );
   }

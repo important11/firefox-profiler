@@ -19,13 +19,6 @@
   white-space: nowrap;
 }
 
-.tooltipCallNodeHeaderRight {
-  padding: 0 5px;
-  margin-top: 5px;
-  color: var(--grey-50);
-  white-space: nowrap;
-}
-
 .tooltipCallNodeName {
   white-space: nowrap;
 }
