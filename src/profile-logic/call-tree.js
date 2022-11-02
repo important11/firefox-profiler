@@ -606,27 +606,64 @@ function _subtractSummaryPerFunctions(
   return { callNodeSelf, callNodeTotal };
 }
 
+/**
+ * The following code belongs to an optimization that improves the performance of the call tree
+ * significantly, by caching lots of computed data.
+ * It was implemented in https://github.com/firefox-devtools/profiler/pull/4227
+ */
+
 /** ensures that the slices are not to large for any reasonably sized sample */
 const MAX_SAMPLE_SLICE_NUMBER = 300;
 const MAX_SLICES_PER_LEVEL = 5;
 
 type SummarySpecificFuncs<T> = {|
+  /** compute the summary information for the sample range (the end index is not included) */
   compute: (startIndex: number, endIndex: number) => T,
+  /** combine several instances to one */
   combine: (summaryPerFunctions: T[]) => T,
+  /** subtract second instance from the first */
   subtract: (initial: T, subtracted: T) => T,
 |};
 
-/** build slice  */
+/**
+ * Node in the multilevel cache for the function list information
+ * (a mapping of functions to the number of stack samples they appear in) over time:
+ *
+ * The whole sample range is split into slices of equal size.
+ * We store for every slice the function list information.
+ * The slices are further split recursively into smaller, non overlapping,
+ * slides until the slices contain at mosty MAX_SAMPLE_SLICE_NUMBER samples.
+ *
+ * Now when we want to get the function list information for a specific range,
+ * we combine the information from all tree nodes on the root level
+ * that are fully contained in the range. We use the sub slices to recursively
+ * add the information for the borders.
+ * This way we only compute new information for at most 2 * (MAX_SLICES_PER_LEVEL - 1) slices.
+ * Which speeds up the computation.
+ *
+ * The information in the tree nodes themselfes is only computed when needed,
+ * and then cached.
+ *
+ * @param T The type of the information that is stored in the tree nodes,
+ *          e.g. the function list information (_SummaryPerFunction).
+ */
 class SummaryCacheTreeNode<T> {
   _startIndex: number;
+  /** exclusive end index */
   _endIndex: number;
+  /** combined information of all children, only non null
+   * if the information of all children is computed */
   _sums: T | null;
+  /** children of this node if their information is already computed
+   * (the _sums of children objects is non null) */
   _children: (SummaryCacheTreeNode<T> | null)[];
+  /** functions to compute, combine and subtract Ts */
   _funcs: SummarySpecificFuncs<T>;
+  /** size of the leaf samples in this subtree (right border slices might be smaller) */
   _finalSliceSize: number;
-  _numberOfChildren: number;
+  /** size of the slices of the direct children (right border slices might be smaller) */
   _sliceSize: number;
-  // we cache a single prior computation
+  /** we cache a single computation */
   _lastComputation: {| start: number, end: number, sums: T |} | null;
 
   constructor(
@@ -644,14 +681,12 @@ class SummaryCacheTreeNode<T> {
       finalSliceSize < endIndex - startIndex
         ? Math.ceil((this._endIndex - this._startIndex) / this._finalSliceSize)
         : 0;
-    this._numberOfChildren = Math.min(finalSliceCount, MAX_SLICES_PER_LEVEL);
+    const numberOfChildren = Math.min(finalSliceCount, MAX_SLICES_PER_LEVEL);
     this._sliceSize =
-      this._numberOfChildren > 0
-        ? Math.ceil(
-            (this._endIndex - this._startIndex) / this._numberOfChildren
-          )
+      numberOfChildren > 0
+        ? Math.ceil((this._endIndex - this._startIndex) / numberOfChildren)
         : 0;
-    this._children = new Array(this._numberOfChildren).fill(null);
+    this._children = new Array(numberOfChildren).fill(null);
     this._lastComputation = null;
   }
 
@@ -721,7 +756,7 @@ class SummaryCacheTreeNode<T> {
   }
 
   _rangeOfChild(childIndex: number): [number, number] {
-    if (childIndex === this._numberOfChildren - 1) {
+    if (childIndex === this._children.length - 1) {
       return [this._startIndex + childIndex * this._sliceSize, this._endIndex];
     }
     return [
@@ -771,8 +806,6 @@ class SummaryCacheTreeNode<T> {
 
 /**
  * Return the self and total per call node index
- *
- * It's not as simple as expected because their might be recursion happening and we do not want to count the same function multiple times for a time slot.
  */
 function _getSummaryPerFunctionSlice(
   thread: Thread,
